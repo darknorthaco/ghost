@@ -3,6 +3,7 @@ data/*
 
 # Legacy reference trees (not part of GHOST package; keep clone separate if needed)
 phantom/
+_phantom_upstream/
 retrieval-weight-experiment/
 
 # Tauri / Node (ghost_app)
