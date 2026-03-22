@@ -42,27 +42,31 @@ export default function GhostConsole() {
     setInput('');
     addMessage('user', cmd);
 
-    const api = 'http://127.0.0.1:8765';
     if (cmd === 'health' || cmd === 'status') {
-      addMessage('system', 'Querying GHOST API health…');
-      fetch(`${api}/health`)
+      addMessage('system', 'Querying controller health…');
+      fetch('http://127.0.0.1:8765/health')
         .then((r) => r.json())
         .then((d) => addMessage('success', JSON.stringify(d, null, 2)))
         .catch((e) => addMessage('error', `Error: ${e}`));
-    } else if (cmd === 'metrics') {
-      fetch(`${api}/v1/metrics`)
+    } else if (cmd === 'workers') {
+      fetch('http://127.0.0.1:8765/workers')
         .then((r) => r.json())
         .then((d) => addMessage('success', JSON.stringify(d, null, 2)))
         .catch((e) => addMessage('error', `Error: ${e}`));
-    } else if (cmd === 'bandit') {
-      fetch(`${api}/v1/bandit/global`)
+    } else if (cmd === 'stats') {
+      fetch('http://127.0.0.1:8765/stats')
         .then((r) => r.json())
         .then((d) => addMessage('success', JSON.stringify(d, null, 2)))
         .catch((e) => addMessage('error', `Error: ${e}`));
     } else if (cmd === 'help') {
-      addMessage('system', 'Commands: health, metrics, bandit, help');
+      addMessage('system', 'Commands: health, workers, stats, mode, help');
+    } else if (cmd === 'mode') {
+      fetch('http://127.0.0.1:8765/mode')
+        .then((r) => r.json())
+        .then((d) => addMessage('success', JSON.stringify(d, null, 2)))
+        .catch((e) => addMessage('error', `Error: ${e}`));
     } else {
-      addMessage('system', `Unknown command: ${cmd}. Type "help".`);
+      addMessage('system', `Unknown command: ${cmd}. Type "help" for available commands.`);
     }
   };
 
@@ -87,7 +91,7 @@ export default function GhostConsole() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Type a command… (health, metrics, bandit, help)"
+          placeholder="Type a command… (health, workers, stats, help)"
           spellCheck={false}
         />
         <button className="console-send-btn" onClick={handleSend}>

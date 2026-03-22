@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-GHOST GUI Installation Wizard — entry point (recycled Phantom Tk shell).
+GHOST GUI Installation Wizard — entry point (spectral Tk shell).
 
 Run:
     python ghost_wizard.py
 
 Requires Tkinter. Full engine install (venv, pip, init-db) is orchestrated
 via `engine/ghost_setup.py` for scripted/automated flows; the Tk wizard
-remains the interactive UI shell preserved from Phantom.
+remains the interactive UI shell preserved from the upstream lineage.
 """
 from __future__ import annotations
 

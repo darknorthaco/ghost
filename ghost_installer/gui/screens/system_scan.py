@@ -64,7 +64,7 @@ class SystemScanScreen(WizardScreen):
         threading.Thread(target=self._run_scan, daemon=True).start()
 
     def _run_scan(self) -> None:
-        result = self.wizard.api.run_system_scan(ports=[8080, 8081])
+        result = self.wizard.api.run_system_scan(ports=[8765, 8081])
         self.after(0, lambda: self._apply_results(result))
 
     def _apply_results(self, result: dict) -> None:

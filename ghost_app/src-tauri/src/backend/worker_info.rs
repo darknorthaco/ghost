@@ -1,4 +1,4 @@
-//! Phantom §3 — SignedManifest model, canonical payload builder, signature verification.
+//! GHOST §3 — SignedManifest model, canonical payload builder, signature verification.
 
 use crate::security::identity_manager::IdentityManager;
 use serde::{Deserialize, Serialize};

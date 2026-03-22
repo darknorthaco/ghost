@@ -19,14 +19,15 @@ export default function ChatPanel() {
       id: 'welcome',
       role: 'system',
       content:
-        'GHOST retrieval runs locally against your corpus. Enter a query to call POST /v1/retrieve ' +
-        '(hybrid BM25 + dense). No data leaves your machine.',
+        'GHOST Chat routes your questions to a local language model running on your own GPU. ' +
+        'No data leaves your network. To get started, deploy a model worker via the Workers panel, ' +
+        'then type your question below.',
       timestamp: timestamp(),
     },
   ]);
   const [input, setInput]       = useState('');
   const [loading, setLoading]   = useState(false);
-  const [presetId, setPresetId] = useState<string | ''>('');
+  const [model, setModel]       = useState('phi-3.5-mini');
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -48,33 +49,32 @@ export default function ChatPanel() {
     setLoading(true);
 
     try {
-      const body: Record<string, string | number> = { query: text, limit: 8 };
-      if (presetId) body.preset_id = presetId;
-      const response = await fetch(`${CONTROLLER}/v1/retrieve`, {
+      // Submit as an inference task to the GHOST controller.
+      // The LLM Task Master routes it to the best available worker.
+      const response = await fetch(`${CONTROLLER}/tasks/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          task_type: 'llm_inference',
+          parameters: {
+            model,
+            prompt: text,
+            max_tokens: 512,
+            temperature: 0.7,
+          },
+          priority: 1,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error(`API returned ${response.status}`);
+        throw new Error(`Controller returned ${response.status}`);
       }
 
-      const data = (await response.json()) as {
-        decision_id?: string;
-        chunks?: unknown[];
-        explain?: Record<string, unknown>;
-      };
-      const result =
-        JSON.stringify(
-          {
-            decision_id: data.decision_id,
-            chunks: data.chunks,
-            explain: data.explain,
-          },
-          null,
-          2
-        );
+      const data = await response.json();
+      const taskId: string = data.task_id;
+
+      // Poll for the result (simple approach — WebSocket streaming is a future upgrade)
+      const result = await pollTaskResult(taskId);
 
       const assistantMsg: Message = {
         id: crypto.randomUUID(),
@@ -88,7 +88,8 @@ export default function ChatPanel() {
         id: crypto.randomUUID(),
         role: 'system',
         content:
-          `Could not reach the GHOST API or retrieval failed. Is the engine running on 127.0.0.1:8765? ` +
+          `Could not reach the controller or no model worker is available. ` +
+          `Make sure a worker with the "${model}" model is registered and online. ` +
           `Error: ${String(err)}`,
         timestamp: timestamp(),
       };
@@ -101,13 +102,12 @@ export default function ChatPanel() {
   return (
     <div className="panel" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="panel-header">
-        <span className="panel-title">Retrieve</span>
+        <span className="panel-title">Chat</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>preset_id</span>
-          <input
-            value={presetId}
-            onChange={(e) => setPresetId(e.target.value)}
-            placeholder="optional"
+          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Model</span>
+          <select
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
             style={{
               background: 'var(--bg-tertiary)',
               border: '1px solid var(--border-dim)',
@@ -116,9 +116,13 @@ export default function ChatPanel() {
               borderRadius: 4,
               fontSize: 11,
               fontFamily: 'var(--font-mono)',
-              width: 120,
             }}
-          />
+          >
+            <option value="phi-3.5-mini">Phi-3.5 Mini (3.8B)</option>
+            <option value="llama-3-8b">Llama 3 (8B)</option>
+            <option value="mistral-7b">Mistral (7B)</option>
+            <option value="custom">Custom</option>
+          </select>
         </div>
       </div>
 
@@ -182,7 +186,7 @@ export default function ChatPanel() {
               color: 'var(--text-muted)',
               fontStyle: 'italic',
             }}>
-              Retrieving…
+              Routing to local model…
             </div>
           </div>
         )}
@@ -199,7 +203,7 @@ export default function ChatPanel() {
       }}>
         <input
           type="text"
-          placeholder="Search your corpus — hybrid retrieval via /v1/retrieve"
+          placeholder="Ask anything — runs on your hardware, stays on your network"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && send()}
@@ -229,3 +233,27 @@ export default function ChatPanel() {
   );
 }
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+async function pollTaskResult(taskId: string, maxWaitMs = 30_000): Promise<string> {
+  const start = Date.now();
+  while (Date.now() - start < maxWaitMs) {
+    await sleep(1_500);
+    const r = await fetch(`${CONTROLLER}/tasks/${taskId}`);
+    if (!r.ok) continue;
+    const data = await r.json();
+    if (data.status === 'completed' && data.result) {
+      return typeof data.result === 'string'
+        ? data.result
+        : JSON.stringify(data.result, null, 2);
+    }
+    if (data.status === 'failed') {
+      throw new Error(data.error ?? 'Task failed');
+    }
+  }
+  throw new Error('Model took too long to respond (30s timeout). Is a worker online?');
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}

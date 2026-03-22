@@ -21,7 +21,7 @@ class ConfigGenerator:
     def generate_ghost_config(
         self,
         controller_host: str = "localhost",
-        controller_port: int = 8080,
+        controller_port: int = 8765,
         security_level: str = "disabled",
     ) -> Dict:
         """Generate main GHOST configuration"""
@@ -123,7 +123,7 @@ class ConfigGenerator:
             # Generate main ghost config
             main_config = self.generate_ghost_config(
                 controller_host=ghost_config.get("controller_host", "localhost"),
-                controller_port=ghost_config.get("controller_port", 8080),
+                controller_port=ghost_config.get("controller_port", 8765),
                 security_level=ghost_config.get("security_level", "disabled"),
             )
 
@@ -143,7 +143,7 @@ class ConfigGenerator:
                 worker_config = self.generate_worker_config(
                     worker_id=worker_cfg.get("worker_id", f"worker-{i+1}"),
                     controller_host=worker_cfg.get("controller_host", "localhost"),
-                    controller_port=worker_cfg.get("controller_port", 8080),
+                    controller_port=worker_cfg.get("controller_port", 8765),
                     worker_port=worker_cfg.get("worker_port", 8090 + i),
                     gpu_index=worker_cfg.get("gpu_index", i),
                 )

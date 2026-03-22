@@ -43,7 +43,7 @@ export default function ControllerSelectionScreen({ onConfirm, onCancel }: Props
   }, []);
 
   const host = placement === 'custom' ? customHost : '127.0.0.1';
-  const port = placement === 'custom' ? parseInt(customPort, 10) || 8765 : 8765;
+    const port = placement === 'custom' ? parseInt(customPort, 10) || 8765 : 8765;
 
   const handleConfirm = async () => {
     if (!fingerprint) return;

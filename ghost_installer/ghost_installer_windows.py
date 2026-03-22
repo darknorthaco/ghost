@@ -111,7 +111,7 @@ class WindowsInstaller:
         print("\n💡 TIP: You may need to configure Windows Firewall to allow GHOST:")
         print("   Run as Administrator:")
         print(
-            f'   New-NetFirewallRule -DisplayName "GHOST Controller" -Direction Inbound -Port 8080 -Protocol TCP -Action Allow'
+            f'   New-NetFirewallRule -DisplayName "GHOST Controller" -Direction Inbound -Port 8765 -Protocol TCP -Action Allow'
         )
         return True
 

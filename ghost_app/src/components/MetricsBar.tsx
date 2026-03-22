@@ -30,9 +30,8 @@ export default function MetricsBar({ health, onRefresh }: Props) {
 
   const workersCount = (health?.workers_count as number) ?? 0;
   const activeTasks  = (health?.active_tasks  as number) ?? 0;
-  const mode         = (health?.execution_mode as string) ?? 'GHOST';
-  const rawStatus    = (health?.status        as string) ?? 'unknown';
-  const status       = rawStatus === 'ok' ? 'healthy' : rawStatus;
+  const mode         = (health?.execution_mode as string) ?? 'MANUAL';
+  const status       = (health?.status        as string) ?? 'unknown';
 
   const cpuLabel = sys ? `${sys.cpu_percent.toFixed(0)}%` : '—';
   const ramLabel = sys
@@ -64,7 +63,7 @@ export default function MetricsBar({ health, onRefresh }: Props) {
 
       <div className="metric-item">
         <span className="metric-dot" />
-        <span className="metric-label">Retrievals</span>
+        <span className="metric-label">Workers</span>
         <span className="metric-value">{workersCount}</span>
       </div>
 

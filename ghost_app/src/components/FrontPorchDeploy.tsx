@@ -16,15 +16,8 @@ interface Props {
   onPreScanComplete: (result: DeploymentPreScanResult) => void;
 }
 
-function formatInvokeError(err: unknown): string {
-  if (typeof err === 'string') return err;
-  if (err instanceof Error) return err.message;
-  return String(err);
-}
-
 export default function FrontPorchDeploy({ onPreScanComplete }: Props) {
   const [deploying, setDeploying] = useState(false);
-  const [deployError, setDeployError] = useState<string | null>(null);
   const [progress, setProgress] = useState<DeployProgress | null>(null);
   const [scanLog, setScanLog] = useState<string[]>([]);
   const logEndRef = useRef<HTMLDivElement>(null);
@@ -60,14 +53,12 @@ export default function FrontPorchDeploy({ onPreScanComplete }: Props) {
 
   const handleDeploy = async () => {
     setDeploying(true);
-    setDeployError(null);
     setScanLog([]);
     try {
       const result = await runDeploymentPreScan();
       onPreScanComplete(result);
     } catch (err) {
       console.error('Pre-scan failed:', err);
-      setDeployError(formatInvokeError(err));
       setDeploying(false);
     }
   };
@@ -119,33 +110,9 @@ export default function FrontPorchDeploy({ onPreScanComplete }: Props) {
           )}
         </div>
       ) : (
-        <>
-          {deployError && (
-            <div
-              className="deploy-error"
-              style={{
-                maxWidth: 480,
-                margin: '0 auto 16px',
-                padding: 12,
-                fontSize: 12,
-                lineHeight: 1.45,
-                textAlign: 'left',
-                color: '#ffb4b4',
-                background: 'rgba(180, 40, 40, 0.2)',
-                border: '1px solid rgba(255, 80, 80, 0.35)',
-                borderRadius: 6,
-                fontFamily: 'var(--font-mono)',
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-              }}
-            >
-              {deployError}
-            </div>
-          )}
-          <button className="deploy-btn" onClick={handleDeploy} disabled={deploying}>
-            Deploy GHOST
-          </button>
-        </>
+        <button className="deploy-btn" onClick={handleDeploy} disabled={deploying}>
+          Deploy GHOST
+        </button>
       )}
     </div>
   );

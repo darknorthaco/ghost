@@ -31,7 +31,7 @@ def run_system_scan(ports: List[int] = None) -> Dict:
         passed, warnings, failed – raw string lists from SystemChecker
     """
     if ports is None:
-        ports = [8080, 8081]
+        ports = [8765, 8081]
 
     checker = SystemChecker()
 

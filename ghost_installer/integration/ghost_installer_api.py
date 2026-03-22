@@ -208,7 +208,7 @@ class GHOSTInstallerAPI:
         self,
         config_path: Path,
         host: str = "127.0.0.1",
-        port: int = 8080,
+        port: int = 8765,
         security: str = "disabled",
         identity_fingerprint: str = "",
         execution_mode: str = "manual",
@@ -227,7 +227,7 @@ class GHOSTInstallerAPI:
                                   should be written (e.g.
                                   ``~/.ghost/ghost_config.json``).
             host:                 Controller host from §1 ceremony.
-            port:                 Controller port (default 8080).
+            port:                 Controller port (default 8765).
             security:             ``"disabled"``, ``"basic"``, or ``"full"``.
             identity_fingerprint: Hex Ed25519 fingerprint from IdentityManager.
             execution_mode:       Default execution mode.

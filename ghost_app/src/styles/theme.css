@@ -1,27 +1,25 @@
 :root {
-  /* GHOST spectral palette — layout parity with Phantom; colors replaced */
+  /* Spectral doctrine: Pale Black, Charcoal, Ghost Grey, White */
   --bg-primary: #0f0f0f;
   --bg-secondary: #1a1a1a;
   --bg-tertiary: #1a1a1a;
   --bg-surface: #1a1a1a;
-  --bg-hover: #252525;
+  --bg-hover: #242424;
 
   --text-primary: #e6e6e6;
   --text-secondary: #b8b8b8;
-  --text-muted: #7a7a7a;
+  --text-muted: #8a8a8a;
+  --text-white: #ffffff;
 
-  --accent-spectral: #e6e6e6;
-  --accent-spectral-dim: rgba(230, 230, 230, 0.12);
-  /* Aliases for legacy Phantom layout class names */
-  --accent-blue: var(--accent-spectral);
-  --accent-blue-dim: var(--accent-spectral-dim);
+  --accent-blue: #00a6ff;
+  --accent-blue-dim: rgba(0, 166, 255, 0.15);
   --accent-crimson: #ff2a2a;
   --accent-crimson-dim: rgba(255, 42, 42, 0.12);
   --accent-green: #00e676;
   --accent-amber: #ffab00;
 
-  --border-color: #2e2e2e;
-  --border-glow: rgba(230, 230, 230, 0.2);
+  --border-color: #2a2a2a;
+  --border-glow: rgba(0, 166, 255, 0.2);
 
   --sidebar-width: 220px;
   --metrics-height: 42px;

@@ -170,7 +170,7 @@ class SystemChecker:
     def run_all_checks(self, ports: Optional[List[int]] = None) -> bool:
         """Run all system checks"""
         if ports is None:
-            ports = [8080, 8081, 3000, 5000]  # Default ports
+            ports = [8765, 8081, 3000, 5000]  # Default ports
 
         checks = [
             self.check_python_version(),

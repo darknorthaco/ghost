@@ -21,7 +21,7 @@
   justify-content: center;
   width: 100%;
   height: 100%;
-  background: radial-gradient(ellipse at center, #101020 0%, #060610 70%, #020208 100%);
+  background: radial-gradient(ellipse at center, #1a1a1a 0%, #0f0f0f 70%, #0a0a0a 100%);
   position: relative;
   overflow: hidden;
 }
@@ -30,7 +30,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 40%, rgba(0, 120, 255, 0.06) 0%, transparent 60%);
+  background: radial-gradient(circle at 50% 40%, rgba(230, 230, 230, 0.04) 0%, transparent 60%);
   pointer-events: none;
 }
 

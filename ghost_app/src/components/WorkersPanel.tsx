@@ -2,35 +2,72 @@ import { useState, useEffect, useRef } from 'react';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { scanAndRegisterWorkers } from '../utils/tauri';
 
-const API = 'http://127.0.0.1:8765';
-
-interface BanditArm {
-  preset_id: string;
-  alpha: number;
-  beta: number;
-  mean: number;
-  pulls: number;
-  total_reward: number;
+interface Worker {
+  worker_id: string;
+  host: string;
+  port: number;
+  gpu_info: Record<string, unknown>;
+  status: string;
+  signature_verified?: boolean;
+  fingerprint?: string;
+  key_changed?: boolean;
 }
 
-/** Preset arms from GET /v1/bandit/{scope} — Thompson sampling posteriors. */
+/** Signature status badge for §3 manifest verification. */
+function SignatureBadge({ worker }: { worker: Worker }) {
+  if (worker.key_changed) {
+    return (
+      <span
+        className="status-badge"
+        style={{ background: 'var(--accent-crimson, #dc3545)', color: '#fff' }}
+        title="Public key changed — re-approval required"
+      >
+        ⚠ Key Changed
+      </span>
+    );
+  }
+  if (worker.signature_verified === true) {
+    return (
+      <span
+        className="status-badge active"
+        title={`Verified · ${worker.fingerprint ?? ''}`}
+      >
+        ✓ Verified
+      </span>
+    );
+  }
+  if (worker.signature_verified === false) {
+    return (
+      <span
+        className="status-badge offline"
+        title="Signature missing or invalid — not eligible for auto-selection"
+      >
+        ✗ Unverified
+      </span>
+    );
+  }
+  // undefined — legacy worker, no sig info
+  return (
+    <span className="status-badge" style={{ opacity: 0.6 }} title="No signature data (legacy worker)">
+      — N/A
+    </span>
+  );
+}
+
 export default function WorkersPanel() {
-  const [arms, setArms] = useState<BanditArm[]>([]);
+  const [workers, setWorkers] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState<string | null>(null);
   const [scanLog, setScanLog] = useState<string[]>([]);
   const logEndRef = useRef<HTMLDivElement>(null);
 
-  const fetchBandit = () => {
+  const fetchWorkers = () => {
     setLoading(true);
     setScanResult(null);
-    fetch(`${API}/v1/bandit/global`)
+    fetch('http://127.0.0.1:8765/workers')
       .then((r) => r.json())
-      .then((d) => {
-        setArms(Array.isArray(d.arms) ? d.arms : []);
-        setLoading(false);
-      })
+      .then((d) => { setWorkers(d.workers || []); setLoading(false); })
       .catch(() => setLoading(false));
   };
 
@@ -44,7 +81,7 @@ export default function WorkersPanel() {
         setScanResult(
           `Scanned ${r.scanned} node(s), registered ${r.registered} worker(s)`
         );
-        fetchBandit();
+        fetchWorkers();
       })
       .catch((e) => {
         setScanning(false);
@@ -59,34 +96,28 @@ export default function WorkersPanel() {
     }).then((fn) => {
       unlisten = fn;
     });
-    return () => {
-      unlisten?.();
-    };
+    return () => { unlisten?.(); };
   }, []);
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [scanLog]);
 
-  useEffect(() => {
-    fetchBandit();
-  }, []);
+  useEffect(() => { fetchWorkers(); }, []);
 
   return (
     <div className="panel">
       <div className="panel-header">
-        <span className="panel-title">Bandit (global scope)</span>
+        <span className="panel-title">Workers</span>
         <button
           className="console-send-btn"
           onClick={runScan}
           disabled={scanning}
-          title="Optional: scan LAN for distributed workers (legacy fabric)"
+          title="Scan LAN for GHOST workers on port 8090 and register with controller"
         >
           {scanning ? 'Scanning…' : 'Scan LAN'}
         </button>
-        <button className="console-send-btn" onClick={fetchBandit}>
-          Refresh
-        </button>
+        <button className="console-send-btn" onClick={fetchWorkers}>Refresh</button>
       </div>
       {scanResult && (
         <div className="scan-result" style={{ fontSize: '0.85em', marginBottom: 8 }}>
@@ -122,32 +153,34 @@ export default function WorkersPanel() {
       )}
 
       {loading ? (
-        <div className="empty-state">Loading bandit snapshot…</div>
-      ) : arms.length === 0 ? (
-        <div className="empty-state">
-          No bandit arms yet. Start the GHOST API and ingest corpus data, or check optimizer scope.
-        </div>
+        <div className="empty-state">Loading workers…</div>
+      ) : workers.length === 0 ? (
+        <div className="empty-state">No workers registered. Use LAN scan or register via API.</div>
       ) : (
         <table className="data-table">
           <thead>
             <tr>
-              <th>Preset</th>
-              <th>Mean</th>
-              <th>Pulls</th>
-              <th>α</th>
-              <th>β</th>
-              <th>Total reward</th>
+              <th>ID</th>
+              <th>Host</th>
+              <th>Port</th>
+              <th>GPU</th>
+              <th>Signature</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody>
-            {arms.map((a) => (
-              <tr key={a.preset_id}>
-                <td style={{ fontFamily: 'var(--font-mono)' }}>{a.preset_id}</td>
-                <td>{a.mean?.toFixed?.(4) ?? '—'}</td>
-                <td>{a.pulls}</td>
-                <td>{a.alpha?.toFixed?.(3) ?? '—'}</td>
-                <td>{a.beta?.toFixed?.(3) ?? '—'}</td>
-                <td>{a.total_reward?.toFixed?.(4) ?? '—'}</td>
+            {workers.map((w) => (
+              <tr key={w.worker_id}>
+                <td style={{ fontFamily: 'var(--font-mono)' }}>{w.worker_id}</td>
+                <td>{w.host}</td>
+                <td>{w.port}</td>
+                <td>{(w.gpu_info as Record<string, string>)?.name ?? '—'}</td>
+                <td><SignatureBadge worker={w} /></td>
+                <td>
+                  <span className={`status-badge ${w.status === 'active' ? 'active' : 'offline'}`}>
+                    {w.status}
+                  </span>
+                </td>
               </tr>
             ))}
           </tbody>

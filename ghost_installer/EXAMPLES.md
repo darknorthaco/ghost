@@ -269,7 +269,7 @@ UI port [3000]: 3000
 Installation Summary
 ====================================
 Installation Directory: /opt/ghost
-Controller: 192.168.1.103:8080
+Controller: 192.168.1.103:8765
 Security Level: development
 Socket Infrastructure: Enabled
 RedBlue UI: Enabled

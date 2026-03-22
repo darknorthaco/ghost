@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class PortVerifier:
     """Handles port verification and cleanup for GHOST components"""
 
-    GHOST_PORTS = [8080, 8081, 3000]
+    GHOST_PORTS = [8765, 8081, 3000]
 
     def __init__(self, progress_callback: Optional[Callable] = None):
         self.progress_callback = progress_callback or print

@@ -1,4 +1,4 @@
-//! Phantom discovery: broadcast DISCOVER_WORKERS, workers self-identify with signed manifests.
+//! GHOST discovery: broadcast DISCOVER_WORKERS, workers self-identify with signed manifests.
 //! No host probing, ARP, or port scanning. Subnets from NIC enumeration only.
 //!
 //! §3 integration: incoming manifests are parsed as SignedManifest, signature is
@@ -18,7 +18,7 @@ use std::time::Duration;
 pub const DISCOVERY_PORT: u16 = 8095;
 
 /// Discovery request sent via UDP broadcast.
-const DISCOVER_PAYLOAD: &[u8] = b"PHANTOM_DISCOVER_WORKERS";
+const DISCOVER_PAYLOAD: &[u8] = b"GHOST_DISCOVER_WORKERS";
 
 /// Default total discovery window when config is unavailable.
 pub const DEFAULT_DISCOVERY_TOTAL_TIMEOUT_MS: u64 = 10000;
@@ -364,7 +364,7 @@ pub(crate) fn discover_single_window(
     manifests
 }
 
-/// Send a single UDP `PHANTOM_DISCOVER_WORKERS` probe to `127.0.0.1:8095`
+/// Send a single UDP `GHOST_DISCOVER_WORKERS` probe to `127.0.0.1:8095`
 /// and return `true` if any response is received within `timeout_ms`.
 /// Used by the worker readiness probe loop in `start_local_worker()`.
 pub fn probe_worker_readiness(timeout_ms: u64) -> bool {

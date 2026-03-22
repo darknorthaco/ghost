@@ -85,7 +85,7 @@ class HealthChecker:
             return True  # Non-critical during initial installation
 
     def check_controller_health(
-        self, host: str = "localhost", port: int = 8080
+        self, host: str = "localhost", port: int = 8765
     ) -> bool:
         """Check if controller is running and healthy"""
         try:
@@ -144,7 +144,7 @@ class HealthChecker:
         ]
 
         # Check ports
-        self.check_ports([8080, 8081, 3000])
+        self.check_ports([8765, 8081, 3000])
 
         # Optionally check controller
         if check_controller:

@@ -1,4 +1,4 @@
-//! Phantom §3/§5 — Append-only TrustStore for worker identity tracking.
+//! GHOST §3/§5 — Append-only TrustStore for worker identity tracking.
 //!
 //! Records every trust-level transition per worker.  Implements TOFU
 //! (Trust On First Use) key management and key-change detection.

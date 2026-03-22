@@ -1,4 +1,4 @@
-//! Phantom Discovery Log — structured log for deployment ceremony diagnostics.
+//! GHOST discovery log — structured log for deployment ceremony diagnostics.
 //!
 //! Built during LAN scan; provides sanitized, copy/paste-ready output when
 //! zero workers are detected.

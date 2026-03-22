@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 GHOST Installation Wizard
-Windows XP/95-style Tkinter wizard — installation-phase GUI only.
+Spectral Tkinter wizard — installation-phase GUI only.
 
 This module provides:
     GHOSTWizard   – main Tk window; owns navigation and layout.
@@ -26,28 +26,28 @@ if str(_installer_dir) not in sys.path:
 
 
 # ---------------------------------------------------------------------------
-# Retro Windows XP / 95 colour theme
+# Spectral theme (GHOST doctrine — pale black / charcoal / ghost grey)
 # ---------------------------------------------------------------------------
 
 class WinXPTheme:
-    """GHOST spectral palette — same wizard layout, Phantom blue replaced."""
+    """Colour and font constants for the GHOST spectral installer look."""
 
-    BG = "#0F0F0F"          # Pale black
-    SIDEBAR_BG = "#1A1A1A"  # Charcoal
+    BG = "#1A1A1A"          # Charcoal content
+    SIDEBAR_BG = "#0F0F0F"  # Pale black sidebar
     SIDEBAR_FG = "#E6E6E6"  # Ghost grey
-    TITLE_BG = "#1A1A1A"
+    TITLE_BG = "#0F0F0F"
     TITLE_FG = "#FFFFFF"
     HEADING_FG = "#E6E6E6"
-    SEPARATOR = "#2E2E2E"
+    SEPARATOR = "#2A2A2A"
     BUTTON_BG = "#1A1A1A"
-    BUTTON_ACTIVE = "#E6E6E6"
+    BUTTON_ACTIVE = "#3A3A3A"
     TEXT_FG = "#E6E6E6"
-    ENTRY_BG = "#1A1A1A"
-    CHECK_BG = "#0F0F0F"
+    ENTRY_BG = "#0F0F0F"
+    CHECK_BG = "#1A1A1A"
     ROW_ALT = "#141414"
-    SUCCESS = "#006600"
-    WARNING = "#996600"
-    FAIL = "#CC0000"
+    SUCCESS = "#00C853"
+    WARNING = "#FFB300"
+    FAIL = "#FF5252"
 
     FONT = ("Tahoma", 9)
     FONT_BOLD = ("Tahoma", 9, "bold")
@@ -68,7 +68,7 @@ class WizardState:
     show_detailed_logs: bool = False
 
     # Installation directory
-    install_dir: Path = field(default_factory=lambda: Path.home() / "ghost")
+    install_dir: Path = field(default_factory=lambda: Path.home() / ".ghost")
 
     # Worker discovery
     discovery_mode: str = "comprehensive"
@@ -192,7 +192,7 @@ class GHOSTWizard(tk.Tk):
             justify=tk.CENTER,
         ).pack(pady=(30, 10))
 
-        tk.Frame(self.sidebar, bg="#4070C0", height=2).pack(
+        tk.Frame(self.sidebar, bg="#2A2A2A", height=2).pack(
             fill=tk.X, padx=10, pady=4
         )
 
@@ -251,7 +251,7 @@ class GHOSTWizard(tk.Tk):
             self.title_bar,
             text="",
             bg=t.TITLE_BG,
-            fg="#C8D8F8",
+            fg="#B0B0B0",
             font=t.FONT,
             anchor="w",
             padx=16,
@@ -266,7 +266,7 @@ class GHOSTWizard(tk.Tk):
         )
         self._title_lbl.pack(anchor="w", pady=(8, 0))
         self._subtitle_lbl = tk.Label(
-            inner, text="", bg=t.TITLE_BG, fg="#C8D8F8",
+            inner, text="", bg=t.TITLE_BG, fg="#B0B0B0",
             font=t.FONT, anchor="w"
         )
         self._subtitle_lbl.pack(anchor="w")
@@ -338,11 +338,11 @@ class GHOSTWizard(tk.Tk):
         for i, lbl in enumerate(self._sidebar_step_labels):
             if i == idx:
                 lbl.config(
-                    fg="#FFFF88",
+                    fg="#E6E6E6",
                     font=self.theme.FONT_BOLD,
                 )
             elif i < idx:
-                lbl.config(fg="#A0C8A0", font=self.theme.FONT)
+                lbl.config(fg="#8A9A8A", font=self.theme.FONT)
             else:
                 lbl.config(fg=self.theme.SIDEBAR_FG, font=self.theme.FONT)
 
@@ -360,8 +360,9 @@ class GHOSTWizard(tk.Tk):
                 next_idx = 5
             self._show_screen(min(next_idx, len(self._screen_classes) - 1))
         else:
-            # Last screen — queue headless native install + optional launch
-            self._start_post_install()
+            # Last screen — Finish button
+            if getattr(self.state, "launch_ghost", False):
+                self._launch_ghost()
             self.destroy()
 
     def _on_back(self) -> None:
@@ -426,30 +427,19 @@ class GHOSTWizard(tk.Tk):
         self._api = None
 
     # ------------------------------------------------------------------ #
-    # Post-installation (GHOST native: venv, pip -e, API 8765, desktop)
+    # Post-installation
     # ------------------------------------------------------------------ #
 
-    def _start_post_install(self) -> None:
-        import os
+    def _launch_ghost(self) -> None:
         import subprocess
-        import sys
-
-        env = os.environ.copy()
-        env["GHOST_LAUNCH"] = "1" if getattr(self.state, "launch_ghost", True) else "0"
-        flags = 0
-        if sys.platform == "win32":
-            flags = getattr(subprocess, "DETACHED_PROCESS", 0x8) | getattr(
-                subprocess, "CREATE_NEW_PROCESS_GROUP", 0x200
-            )
-        try:
-            subprocess.Popen(
-                [sys.executable, "--post-install"],
-                env=env,
-                close_fds=True,
-                creationflags=flags,
-            )
-        except Exception:
-            pass
+        launch_script = self.state.install_dir / "environment.sh"
+        if not launch_script.exists():
+            launch_script = self.state.install_dir / "environment.ps1"
+        if launch_script.exists():
+            try:
+                subprocess.Popen([str(launch_script)])
+            except Exception:
+                pass
 
 
 # ---------------------------------------------------------------------------

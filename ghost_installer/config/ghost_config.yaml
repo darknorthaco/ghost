@@ -3,7 +3,7 @@
 
 controller:
   host: localhost
-  port: 8080
+  port: 8765
   api_version: v1
   max_workers: 10
 

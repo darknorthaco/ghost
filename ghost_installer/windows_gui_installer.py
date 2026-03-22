@@ -343,7 +343,7 @@ class RequirementsPage(QWizardPage):
         requirements = [
             ("Python 3.8+", "Checking...", "python_req"),
             ("Administrator privileges", "Checking...", "admin_req"),
-            ("Network ports (8080, 8081, 3000)", "Checking...", "ports_req"),
+            ("Network ports (8765, 8081, 3000)", "Checking...", "ports_req"),
             ("Disk space (500MB+)", "Checking...", "disk_req")
         ]
 
@@ -424,7 +424,7 @@ class RequirementsPage(QWizardPage):
         """Check if required ports are available"""
         import socket
 
-        ports = [8080, 8081, 3000]
+        ports = [8765, 8081, 3000]
         for port in ports:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 try:

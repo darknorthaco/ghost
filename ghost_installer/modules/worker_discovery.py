@@ -213,7 +213,7 @@ class WorkerDiscovery:
             config = {
                 "worker_id": worker.get("name", f"worker-{i+1}"),
                 "controller_host": "localhost",  # Will be updated by config generator
-                "controller_port": 8080,
+                "controller_port": 8765,
                 "worker_host": worker["ip"],
                 "worker_port": worker["port"],
                 "gpu_name": worker.get("gpu", "Unknown"),

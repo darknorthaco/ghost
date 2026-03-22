@@ -309,12 +309,12 @@ Check which process is using the port:
 
 **Linux/Mac:**
 ```bash
-lsof -i :8080
+lsof -i :8765
 ```
 
 **Windows:**
 ```powershell
-netstat -ano | findstr :8080
+netstat -ano | findstr :8765
 ```
 
 ### Virtual Environment Issues

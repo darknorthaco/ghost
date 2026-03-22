@@ -23,8 +23,6 @@ import './styles/toc.css';
 
 type Phase = 'wizard' | 'controller_selection' | 'front_porch' | 'deploying' | 'deployment_ceremony' | 'consent_toc' | 'toc';
 
-const GHOST_API = 'http://127.0.0.1:8765';
-
 export default function App() {
   const [phase, setPhase] = useState<Phase>('wizard');
   const [preScanResult, setPreScanResult] = useState<DeploymentPreScanResult | null>(null);
@@ -32,35 +30,18 @@ export default function App() {
   const [health, setHealth] = useState<Record<string, unknown> | null>(null);
 
   const checkHealth = useCallback(() => {
-    Promise.all([
-      fetch(`${GHOST_API}/health`).then((r) => (r.ok ? r.json() : null)),
-      fetch(`${GHOST_API}/v1/metrics`).then((r) => (r.ok ? r.json() : null)),
-    ])
-      .then(([h, m]) => {
-        if (!h && !m) {
-          setHealth(null);
-          return;
-        }
-        const merged: Record<string, unknown> = {
-          ...(h && typeof h === 'object' ? h : {}),
-          ...(m && typeof m === 'object' ? m : {}),
-        };
-        if (typeof (merged as { reward_queue_depth?: number }).reward_queue_depth === 'number') {
-          merged.active_tasks = (merged as { reward_queue_depth: number }).reward_queue_depth;
-        }
-        merged.workers_count = (merged as { retrieve_total?: number }).retrieve_total ?? 0;
-        merged.execution_mode = 'GHOST';
-        setHealth(merged);
-      })
+    fetch('http://127.0.0.1:8765/health')
+      .then((r) => r.json())
+      .then((d) => setHealth(d))
       .catch(() => setHealth(null));
   }, []);
 
   // Auto-detect deployed controller on mount; skip wizard if already running.
   useEffect(() => {
-    fetch(`${GHOST_API}/health`)
+    fetch('http://127.0.0.1:8765/health')
       .then((r) => r.json())
       .then((d) => {
-        if (d && (d.status === 'ok' || d.status === 'healthy')) {
+        if (d && d.status === 'healthy') {
           setHealth(d);
           setPhase('toc');
         }

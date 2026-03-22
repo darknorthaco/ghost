@@ -3,7 +3,7 @@
 
 worker_id: worker-1
 controller_host: localhost
-controller_port: 8080
+controller_port: 8765
 worker_port: 8090
 
 # GPU Configuration

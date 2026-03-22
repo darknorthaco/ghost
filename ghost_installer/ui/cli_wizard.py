@@ -65,7 +65,7 @@ class CLIWizard:
 
         self.selected_components = []
         self.controller_host = "localhost"
-        self.controller_port = 8080
+        self.controller_port = 8765
         self.security_level = "disabled"
 
     def run(self) -> bool:
@@ -274,7 +274,7 @@ class CLIWizard:
             )
 
             self.controller_port = self.prompts.input_number(
-                "Controller port", default=8080, min_val=1024, max_val=65535
+                "Controller port", default=8765, min_val=1024, max_val=65535
             )
 
         return True

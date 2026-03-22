@@ -12,13 +12,13 @@ use tokio::net::TcpStream;
 
 /// Short TCP probe — used to auto-select offline deploy when isolated.
 ///
-/// - `PHANTOM_FORCE_OFFLINE=1` → always false (treat as offline upstream).
-/// - `PHANTOM_ASSUME_ONLINE=1` → always true (CI / tests without real WAN).
+/// - `GHOST_FORCE_OFFLINE=1` → always false (treat as offline upstream).
+/// - `GHOST_ASSUME_ONLINE=1` → always true (CI / tests without real WAN).
 pub async fn network_reachable_for_deploy() -> bool {
-    if std::env::var("PHANTOM_FORCE_OFFLINE").as_deref() == Ok("1") {
+    if std::env::var("GHOST_FORCE_OFFLINE").as_deref() == Ok("1") {
         return false;
     }
-    if std::env::var("PHANTOM_ASSUME_ONLINE").as_deref() == Ok("1") {
+    if std::env::var("GHOST_ASSUME_ONLINE").as_deref() == Ok("1") {
         return true;
     }
     for (host, port) in [("1.1.1.1", 443_u16), ("9.9.9.9", 443_u16)] {

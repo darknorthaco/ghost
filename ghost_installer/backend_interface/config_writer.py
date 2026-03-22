@@ -131,7 +131,7 @@ class ConfigBootstrap:
     def write(
         self,
         host: str = "127.0.0.1",
-        port: int = 8080,
+        port: int = 8765,
         security: str = "disabled",
         identity_fingerprint: str = "",
         execution_mode: str = "manual",
@@ -141,7 +141,7 @@ class ConfigBootstrap:
 
         Args:
             host:                 Controller host address (from §1 ceremony).
-            port:                 Controller port (default 8080).
+            port:                 Controller port (default 8765).
             security:             Security level — ``"disabled"``, ``"basic"``,
                                   or ``"full"``.
             identity_fingerprint: Hex-encoded Ed25519 public-key fingerprint
@@ -175,7 +175,7 @@ class ConfigBootstrap:
                 "identity_fingerprint": identity_fingerprint,
             },
             "ports": {
-                "controller_api": {"port": 8080, "protocol": "tcp", "required": True},
+                "controller_api": {"port": 8765, "protocol": "tcp", "required": True},
                 "worker_http": {"port": 8090, "protocol": "tcp", "required": True},
                 "discovery_udp": {"port": 8095, "protocol": "udp", "required": True},
                 "socket_infra": {"port": 8081, "protocol": "tcp", "required": False},

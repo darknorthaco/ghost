@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-/// GHOST FastAPI `/health` — only `status` is required; rest optional for Phantom-compat metrics.
+/// GHOST FastAPI `/health` — only `status` is required; rest optional for legacy-compat metrics.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HealthResponse {
     pub status: String,

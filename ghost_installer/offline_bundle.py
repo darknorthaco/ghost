@@ -124,13 +124,13 @@ def _write_config_templates(dest: Path) -> None:
         "_comment": "Template only — Tauri bootstrap_config overwrites on deploy.",
         "controller": {
             "host": "127.0.0.1",
-            "port": 8080,
+            "port": 8765,
             "security": "disabled",
             "identity_fingerprint": "",
             "socket_integrated": True,
         },
         "ports": {
-            "controller_api": {"port": 8080, "protocol": "tcp", "required": True},
+            "controller_api": {"port": 8765, "protocol": "tcp", "required": True},
             "worker_http": {"port": 8090, "protocol": "tcp", "required": True},
             "discovery_udp": {"port": 8095, "protocol": "udp", "required": True},
             "socket_infra": {"port": 8081, "protocol": "tcp", "required": False},
@@ -143,7 +143,7 @@ def _write_config_templates(dest: Path) -> None:
         "_comment": "Local worker template — adjust after install.",
         "worker_id": "local-worker",
         "controller_host": "127.0.0.1",
-        "controller_port": 8080,
+        "controller_port": 8765,
         "worker_port": 8090,
     }
     _write_text(dest / "ghost_config.template.json", json.dumps(ghost, indent=2))
