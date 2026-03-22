@@ -1,0 +1,19 @@
+data/*
+!data/.gitkeep
+
+# Legacy reference trees (not part of GHOST package; keep clone separate if needed)
+phantom/
+retrieval-weight-experiment/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+*.db
+*.db-wal
+*.db-shm

@@ -1,0 +1,6 @@
+# Equal weights over retrieval dimensions (sum = 1.0)
+preset_id: equal
+weights:
+  recency: 0.3333333333333333
+  importance: 0.3333333333333333
+  relevance: 0.3333333333333334

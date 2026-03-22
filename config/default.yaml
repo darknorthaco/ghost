@@ -1,0 +1,35 @@
+# GHOST default configuration — sovereign, offline-first paths under ./data
+ghost:
+  environment: dev
+  data_dir: data
+  sqlite_path: data/ghost.db
+  audit_log_dir: data/audit
+  random_seed: 42
+
+ingestion:
+  recursive_default: false
+  chunk_size: 2000
+  chunk_overlap: 200
+  # Extensions (lower case) — empty means rely on mime sniff only
+  extensions: [".txt", ".md", ".rst", ".py", ".json", ".yaml", ".yml", ".toml", ".csv"]
+
+retrieval:
+  corpus_mode: auto  # auto | skills | chunks
+  rrf_k: 60
+  bm25_weight: 0.4
+  dense_weight: 0.6
+  dimensions: 1024
+  default_top_k: 10
+
+optimizer:
+  default_scope: global
+  bandit_discount: null  # optional (0,1) for non-stationary posteriors
+  reward_queue_max: 10000
+
+orchestration:
+  heartbeat_timeout_sec: 120
+
+governance:
+  require_human_approval_for_policy_change: true
+  # If approval is required, set env GHOST_POLICY_TOKEN or put token here and send header X-Ghost-Policy-Approve
+  policy_approval_token: null
