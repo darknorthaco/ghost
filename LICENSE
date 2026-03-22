@@ -4,8 +4,8 @@ GHOST — Dual licensing
 Copyright (c) Dark North Co. and contributors.
 
 Retrieval-related design and code in this project incorporate lineage from the
-retrieval-weight experiment (Alfonso DiRocco, https://github.com/fonz-ai). See
-ACKNOWLEDGMENTS.md.
+retrieval-weight experiment (https://github.com/kusp-dev/retrieval-weight-experiment;
+Alfonso DiRocco, https://github.com/fonz-ai). See ACKNOWLEDGMENTS.md.
 
 This software is available under two licensing options:
 

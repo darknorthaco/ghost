@@ -7,7 +7,7 @@ GHOST’s **hybrid retrieval** and **adaptive weighting** stack (BM25 + dense em
 We are grateful for that foundation. GHOST is a **new integrated system** (it is not a copy of that repo end-to-end); the acknowledgment here is for **intellectual and engineering lineage** in the retrieval layer.
 
 - **GitHub profile:** [https://github.com/fonz-ai](https://github.com/fonz-ai)
-- **Retrieval-weight experiment repo:** link the specific repository here when it has a public URL (the experiment may live alongside other work under that account).
+- **Retrieval-weight experiment (public repo):** [https://github.com/kusp-dev/retrieval-weight-experiment](https://github.com/kusp-dev/retrieval-weight-experiment)
 
 ## Phantom (reference patterns)
 

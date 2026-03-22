@@ -21,7 +21,7 @@ GHOST is built around explicit **product and governance principles**. These desc
 
 ## Lineage
 
-Hybrid retrieval and bandit-style adaptation build on prior work summarized in [`ACKNOWLEDGMENTS.md`](ACKNOWLEDGMENTS.md), including the retrieval-weight experiment by [Alfonso DiRocco](https://github.com/fonz-ai) ([@fonz-ai](https://github.com/fonz-ai)).
+Hybrid retrieval and bandit-style adaptation build on prior work summarized in [`ACKNOWLEDGMENTS.md`](ACKNOWLEDGMENTS.md), including the [retrieval-weight experiment](https://github.com/kusp-dev/retrieval-weight-experiment) by [Alfonso DiRocco](https://github.com/fonz-ai) ([@fonz-ai](https://github.com/fonz-ai)).
 
 ## Contributions
 
