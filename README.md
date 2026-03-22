@@ -19,6 +19,15 @@ All decisions—retrieval, routing, optimization, governance—are logged as str
 GHOST is built as a living system with clear boundaries, explicit contracts, and human‑in‑the‑loop governance.
 It is not Phantom, and not the retrieval‑weight experiment—it is a new system that integrates their strengths under a unified architecture.
 
+## Licensing
+
+GHOST uses **dual licensing**:
+
+- **Noncommercial use** — free under the [PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0/) (see [`LICENSE`](LICENSE)). Suitable for personal, hobby, research, and other permitted noncommercial use.
+- **Commercial / industrial use** — requires a **commercial license** from Dark North Co. See [`COMMERCIAL.md`](COMMERCIAL.md).
+
+**Doctrine** (product principles, disclaimers): [`DOCTRINE.md`](DOCTRINE.md) · **Contributing**: [`CONTRIBUTING.md`](CONTRIBUTING.md)
+
 Core Features
 Offline‑first, sovereign design
 

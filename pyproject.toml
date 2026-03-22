@@ -7,7 +7,7 @@ name = "ghost"
 version = "0.1.0"
 description = "GHOST: sovereign adaptive knowledge system (retrieval + optimization + orchestration)"
 requires-python = ">=3.11"
-license = { text = "Apache-2.0" }
+license = { file = "LICENSE" }
 dependencies = [
     "numpy>=1.26",
     "pyyaml>=6.0",
