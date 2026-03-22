@@ -55,7 +55,7 @@ jobs:
           npm run build
           npm run tauri build
 
-      - name: PyInstaller — ghost_installer.exe
+      - name: PyInstaller — ghost.exe
         working-directory: ghost_installer
         run: |
           python -m pip install --upgrade pip
@@ -66,7 +66,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path release-assets | Out-Null
-          Copy-Item -Force "ghost_installer/dist/ghost_installer.exe" "release-assets/"
+          Copy-Item -Force "ghost_installer/dist/ghost.exe" "release-assets/"
           $nsis = Get-ChildItem "ghost_app/src-tauri/target/release/bundle/nsis" -Filter "*.exe" -ErrorAction SilentlyContinue
           if ($nsis) { $nsis | ForEach-Object { Copy-Item $_.FullName "release-assets/" } }
           $msi = Get-ChildItem "ghost_app/src-tauri/target/release/bundle/msi" -Filter "*.msi" -ErrorAction SilentlyContinue

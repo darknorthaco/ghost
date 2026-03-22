@@ -1,5 +1,5 @@
 """
-Headless GHOST install + launch — invoked as: ghost_installer.exe --post-install
+Headless GHOST install + launch — invoked as: ghost.exe --post-install (frozen build)
 
 Copies bundled engine source to ~/.ghost/engine_src (frozen), creates venv,
 pip install -e, init-db, governance token registration, engine_root.txt,
