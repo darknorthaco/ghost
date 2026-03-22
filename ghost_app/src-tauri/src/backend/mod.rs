@@ -1,3 +1,4 @@
+pub mod hide_console;
 pub mod discovery;
 pub mod discovery_log;
 pub mod offline_bundle;

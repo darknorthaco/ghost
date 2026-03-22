@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 
+use crate::backend::hide_console::hide_child_console;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GpuInfo {
     pub name: String,
@@ -17,14 +19,13 @@ pub async fn detect_gpus() -> Vec<GpuInfo> {
 }
 
 async fn detect_nvidia() -> Option<Vec<GpuInfo>> {
-    let output = Command::new("nvidia-smi")
-        .args([
-            "--query-gpu=name,driver_version,memory.total,memory.free",
-            "--format=csv,noheader,nounits",
-        ])
-        .output()
-        .await
-        .ok()?;
+    let mut cmd = Command::new("nvidia-smi");
+    cmd.args([
+        "--query-gpu=name,driver_version,memory.total,memory.free",
+        "--format=csv,noheader,nounits",
+    ]);
+    hide_child_console(&mut cmd);
+    let output = cmd.output().await.ok()?;
 
     if !output.status.success() {
         return None;
@@ -52,11 +53,16 @@ async fn detect_nvidia() -> Option<Vec<GpuInfo>> {
 }
 
 async fn detect_wmi() -> Option<Vec<GpuInfo>> {
-    let output = Command::new("wmic")
-        .args(["path", "win32_VideoController", "get", "Name,DriverVersion,AdapterRAM", "/format:csv"])
-        .output()
-        .await
-        .ok()?;
+    let mut cmd = Command::new("wmic");
+    cmd.args([
+        "path",
+        "win32_VideoController",
+        "get",
+        "Name,DriverVersion,AdapterRAM",
+        "/format:csv",
+    ]);
+    hide_child_console(&mut cmd);
+    let output = cmd.output().await.ok()?;
 
     if !output.status.success() {
         return None;

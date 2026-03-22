@@ -2,9 +2,7 @@ use std::path::{Path, PathBuf};
 use tauri::Emitter;
 use tokio::process::Command;
 
-#[cfg(windows)]
-use std::os::windows::process::CommandExt;
-
+use super::hide_console::hide_child_console;
 use super::discovery::{
     self, base_to_broadcast, discover_workers_with_log, DEFAULT_DISCOVERY_TOTAL_TIMEOUT_MS,
 };
@@ -213,8 +211,10 @@ impl GhostDeployer {
         #[cfg(not(target_os = "windows"))]
         let py_cmd = "python3";
 
-        let output = Command::new(py_cmd)
-            .args(["-m", "venv", &venv_path.to_string_lossy()])
+        let mut cmd = Command::new(py_cmd);
+        cmd.args(["-m", "venv", &venv_path.to_string_lossy()]);
+        hide_child_console(&mut cmd);
+        let output = cmd
             .output()
             .await
             .map_err(|e| format!("Failed to create venv: {e}"))?;
@@ -252,14 +252,16 @@ impl GhostDeployer {
             );
             let find_links = format!("--find-links={}", wheelhouse.to_string_lossy());
             let req_s = req.to_string_lossy().to_string();
-            let output = Command::new(pip.to_string_lossy().as_ref())
-                .args([
-                    "install",
-                    "--no-index",
-                    &find_links,
-                    "-r",
-                    &req_s,
-                ])
+            let mut cmd = Command::new(pip.to_string_lossy().as_ref());
+            cmd.args([
+                "install",
+                "--no-index",
+                &find_links,
+                "-r",
+                &req_s,
+            ]);
+            hide_child_console(&mut cmd);
+            let output = cmd
                 .output()
                 .await
                 .map_err(|e| format!("pip install (offline) failed: {e}"))?;
@@ -281,9 +283,11 @@ impl GhostDeployer {
 
         let engine_root = self.ghost_engine_repo_root();
         let spec = format!("{}[embeddings]", engine_root.to_string_lossy());
-        let output = Command::new(pip.to_string_lossy().as_ref())
-            .args(["install", "--no-cache-dir", "-e", &spec])
-            .current_dir(&engine_root)
+        let mut cmd = Command::new(pip.to_string_lossy().as_ref());
+        cmd.args(["install", "--no-cache-dir", "-e", &spec])
+            .current_dir(&engine_root);
+        hide_child_console(&mut cmd);
+        let output = cmd
             .output()
             .await
             .map_err(|e| format!("pip install -e ghost failed: {e}"))?;
@@ -588,8 +592,7 @@ impl GhostDeployer {
             working_dir.to_string_lossy().as_ref(),
         )
         .env("GHOST_STATE_DIR", state_dir.to_string_lossy().as_ref());
-        #[cfg(windows)]
-        cmd.as_std_mut().creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+        hide_child_console(&mut cmd);
         cmd.spawn()
             .map_err(|e| format!("Failed to start GHOST API: {e}"))?;
 
@@ -698,17 +701,17 @@ impl GhostDeployer {
             }
 
             for &(name, proto, port) in &rules {
-                let result = Command::new("netsh")
-                    .args([
-                        "advfirewall", "firewall", "add", "rule",
-                        &format!("name={name}"),
-                        "dir=in",
-                        "action=allow",
-                        &format!("protocol={proto}"),
-                        &format!("localport={port}"),
-                    ])
-                    .output()
-                    .await;
+                let mut netsh = Command::new("netsh");
+                netsh.args([
+                    "advfirewall", "firewall", "add", "rule",
+                    &format!("name={name}"),
+                    "dir=in",
+                    "action=allow",
+                    &format!("protocol={proto}"),
+                    &format!("localport={port}"),
+                ]);
+                hide_child_console(&mut netsh);
+                let result = netsh.output().await;
 
                 match result {
                     Ok(out) if out.status.success() => {
@@ -793,8 +796,7 @@ impl GhostDeployer {
             .arg(config_path.to_string_lossy().as_ref())
             .current_dir(&linux_worker_dir)
             .env("PYTHONPATH", linux_worker_dir.to_string_lossy().as_ref());
-        #[cfg(windows)]
-        cmd.as_std_mut().creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+        hide_child_console(&mut cmd);
 
         match cmd.spawn() {
             Ok(_) => log::info!("Local worker started on 0.0.0.0:8090"),
@@ -844,8 +846,7 @@ impl GhostDeployer {
             .arg(config_path.to_string_lossy().as_ref())
             .current_dir(&windows_worker_dir)
             .env("PYTHONPATH", windows_worker_dir.to_string_lossy().as_ref());
-        #[cfg(windows)]
-        cmd.as_std_mut().creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+        hide_child_console(&mut cmd);
 
         match cmd.spawn() {
             Ok(_) => {
@@ -1611,10 +1612,10 @@ impl GhostDeployer {
         }
         #[cfg(target_os = "windows")]
         {
-            let _ = Command::new("sc")
-                .args(["stop", "ghost"])
-                .output()
-                .await;
+            let mut sc = Command::new("sc");
+            sc.args(["stop", "ghost"]);
+            hide_child_console(&mut sc);
+            let _ = sc.output().await;
             if let Err(e) = super::windows::service_installer::uninstall_service("ghost").await {
                 log::warn!("Windows service remove: {e}");
             }
@@ -1634,16 +1635,16 @@ impl GhostDeployer {
             "GhostDiscovery",
             "GhostSocket",
         ] {
-            let _ = Command::new("netsh")
-                .args([
-                    "advfirewall",
-                    "firewall",
-                    "delete",
-                    "rule",
-                    &format!("name={name}"),
-                ])
-                .output()
-                .await;
+            let mut netsh = Command::new("netsh");
+            netsh.args([
+                "advfirewall",
+                "firewall",
+                "delete",
+                "rule",
+                &format!("name={name}"),
+            ]);
+            hide_child_console(&mut netsh);
+            let _ = netsh.output().await;
         }
     }
 

@@ -1,6 +1,8 @@
 use std::path::Path;
 use tokio::process::Command;
 
+use crate::backend::hide_console::hide_child_console;
+
 /// Register a Windows service that runs the GHOST FastAPI stack via uvicorn (venv Python).
 pub async fn install_uvicorn_service(
     service_name: &str,
@@ -16,14 +18,16 @@ pub async fn install_uvicorn_service(
         "cmd.exe /c cd /d \"{wd}\" && \"{py}\" -m uvicorn ghost_api.app:app --host {host} --port {port}"
     );
 
-    let output = Command::new("sc")
-        .args([
-            "create",
-            service_name,
-            &format!("binPath={bin_path}"),
-            &format!("DisplayName={display_name}"),
-            "start=demand",
-        ])
+    let mut cmd = Command::new("sc");
+    cmd.args([
+        "create",
+        service_name,
+        &format!("binPath={bin_path}"),
+        &format!("DisplayName={display_name}"),
+        "start=demand",
+    ]);
+    hide_child_console(&mut cmd);
+    let output = cmd
         .output()
         .await
         .map_err(|e| format!("sc create failed: {e}"))?;
@@ -39,8 +43,10 @@ pub async fn install_uvicorn_service(
 }
 
 pub async fn uninstall_service(service_name: &str) -> Result<(), String> {
-    let output = Command::new("sc")
-        .args(["delete", service_name])
+    let mut cmd = Command::new("sc");
+    cmd.args(["delete", service_name]);
+    hide_child_console(&mut cmd);
+    let output = cmd
         .output()
         .await
         .map_err(|e| format!("sc delete failed: {e}"))?;
