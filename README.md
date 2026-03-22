@@ -19,7 +19,7 @@ All decisions—retrieval, routing, optimization, governance—are logged as str
 GHOST is built as a living system with clear boundaries, explicit contracts, and human‑in‑the‑loop governance.
 It is not Phantom, and not the retrieval‑weight experiment—it is a new system that integrates their strengths under a unified architecture.
 
-**Acknowledgments:** Retrieval lineage from the **retrieval-weight experiment** (maintained by the author’s brother) — see [`ACKNOWLEDGMENTS.md`](ACKNOWLEDGMENTS.md).
+**Acknowledgments:** Retrieval lineage from the **retrieval-weight experiment** — **[Alfonso DiRocco](https://github.com/fonz-ai)** ([@fonz-ai](https://github.com/fonz-ai)). See [`ACKNOWLEDGMENTS.md`](ACKNOWLEDGMENTS.md).
 
 ## Licensing
 
