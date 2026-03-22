@@ -19,6 +19,10 @@ GHOST is built around explicit **product and governance principles**. These desc
 - **AS IS.** Software is provided **as is** under the applicable license. See [`LICENSE`](LICENSE). The doctrine does not create an additional warranty.
 - **No endorsement.** A description of use cases in documentation does not imply certification for any regulated or safety-critical use unless **explicitly** stated in a separate written agreement from Dark North Co.
 
+## Lineage
+
+Hybrid retrieval and bandit-style adaptation build on prior work summarized in [`ACKNOWLEDGMENTS.md`](ACKNOWLEDGMENTS.md) (including the retrieval-weight experiment).
+
 ## Contributions
 
 By contributing, you agree your contributions are under the same terms as the project license. See [`CONTRIBUTING.md`](CONTRIBUTING.md).

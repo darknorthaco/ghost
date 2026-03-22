@@ -3,6 +3,9 @@ GHOST — Dual licensing
 
 Copyright (c) Dark North Co. and contributors.
 
+Retrieval-related design and code in this project incorporate lineage from the
+retrieval-weight experiment (sibling project). See ACKNOWLEDGMENTS.md.
+
 This software is available under two licensing options:
 
 1. PolyForm Noncommercial License 1.0.0 (full text below) — free of charge for
