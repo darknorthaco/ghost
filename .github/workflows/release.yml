@@ -1,0 +1,91 @@
+# Build Windows artifacts and attach them to a GitHub Release when you push a version tag (e.g. v1.2.0).
+#
+# Usage:
+#   git tag v1.2.0
+#   git push origin v1.2.0
+#
+# Manual runs (workflow_dispatch) build the same binaries and upload CI artifacts, but do not create a Release.
+
+name: Release (Windows)
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: ghost_app/package-lock.json
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ghost_app/src-tauri
+
+      - name: npm ci + frontend build + Tauri bundle
+        working-directory: ghost_app
+        run: |
+          npm ci
+          npm run build
+          npm run tauri build
+
+      - name: PyInstaller — ghost_installer.exe
+        working-directory: ghost_installer
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyinstaller
+          python -m PyInstaller ghost_installer.spec --noconfirm
+
+      - name: Stage release files
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path release-assets | Out-Null
+          Copy-Item -Force "ghost_installer/dist/ghost_installer.exe" "release-assets/"
+          $nsis = Get-ChildItem "ghost_app/src-tauri/target/release/bundle/nsis" -Filter "*.exe" -ErrorAction SilentlyContinue
+          if ($nsis) { $nsis | ForEach-Object { Copy-Item $_.FullName "release-assets/" } }
+          $msi = Get-ChildItem "ghost_app/src-tauri/target/release/bundle/msi" -Filter "*.msi" -ErrorAction SilentlyContinue
+          if ($msi) { $msi | ForEach-Object { Copy-Item $_.FullName "release-assets/" } }
+          Get-ChildItem release-assets
+
+      - name: Upload CI artifacts (all triggers)
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release-${{ github.sha }}
+          path: release-assets/
+          if-no-files-found: error
+
+      - name: Publish GitHub Release (tag pushes only)
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            release-assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
