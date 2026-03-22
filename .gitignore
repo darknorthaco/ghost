@@ -4,6 +4,11 @@ data/*
 # Legacy reference trees (not part of GHOST package; keep clone separate if needed)
 phantom/
 retrieval-weight-experiment/
+
+# Tauri / Node (ghost_app)
+ghost_app/node_modules/
+ghost_app/src-tauri/target/
+ghost_app/dist/
 __pycache__/
 *.py[cod]
 .pytest_cache/

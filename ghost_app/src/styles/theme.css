@@ -1,0 +1,61 @@
+:root {
+  /* GHOST spectral palette — layout parity with Phantom; colors replaced */
+  --bg-primary: #0f0f0f;
+  --bg-secondary: #1a1a1a;
+  --bg-tertiary: #1a1a1a;
+  --bg-surface: #1a1a1a;
+  --bg-hover: #252525;
+
+  --text-primary: #e6e6e6;
+  --text-secondary: #b8b8b8;
+  --text-muted: #7a7a7a;
+
+  --accent-spectral: #e6e6e6;
+  --accent-spectral-dim: rgba(230, 230, 230, 0.12);
+  /* Aliases for legacy Phantom layout class names */
+  --accent-blue: var(--accent-spectral);
+  --accent-blue-dim: var(--accent-spectral-dim);
+  --accent-crimson: #ff2a2a;
+  --accent-crimson-dim: rgba(255, 42, 42, 0.12);
+  --accent-green: #00e676;
+  --accent-amber: #ffab00;
+
+  --border-color: #2e2e2e;
+  --border-glow: rgba(230, 230, 230, 0.2);
+
+  --sidebar-width: 220px;
+  --metrics-height: 42px;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
