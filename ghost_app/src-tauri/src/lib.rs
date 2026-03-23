@@ -517,13 +517,21 @@ async fn run_deployment_pre_scan(
         .await
         .ok();
 
-    let engine_source = find_engine_source(&app);
-    let ghost_root = state.app.ghost_root.clone();
-    let offline_bundle = resolve_deploy_offline_bundle(&ghost_root, &state, &options).await?;
-    let deployer = GhostDeployer::new(&ghost_root, &engine_source, Some(app.clone()))
-        .with_offline_bundle(offline_bundle);
-
-    let result = deployer.run_pre_scan_deployment().await?;
+    let pre_scan = async {
+        let engine_source = find_engine_source(&app);
+        let ghost_root = state.app.ghost_root.clone();
+        let offline_bundle = resolve_deploy_offline_bundle(&ghost_root, &state, &options).await?;
+        let deployer = GhostDeployer::new(&ghost_root, &engine_source, Some(app.clone()))
+            .with_offline_bundle(offline_bundle);
+        deployer.run_pre_scan_deployment().await
+    };
+    let result = pre_scan.await;
+    if result.is_err() {
+        if let Ok(mut phase) = state.app.phase.lock() {
+            *phase = AppPhase::FrontPorch;
+        }
+    }
+    let result = result?;
 
     let _ = app.emit("deploy-discovery-result", &result);
 
@@ -836,6 +844,13 @@ async fn scan_and_register_workers(
 }
 
 fn find_engine_source(app: &tauri::AppHandle) -> PathBuf {
+    // 0. Explicit engine root (matches GhostDeployer::ghost_engine_repo_root priority)
+    if let Ok(s) = std::env::var("GHOST_ENGINE_ROOT") {
+        let p = PathBuf::from(s);
+        if p.join("config").join("default.yaml").exists() {
+            return p;
+        }
+    }
     // 1. Optional bundle (legacy); Option B prefers system venv + engine_root.txt.
     if let Ok(res_dir) = app.path().resource_dir() {
         let bundled = res_dir.join("ghost_core");

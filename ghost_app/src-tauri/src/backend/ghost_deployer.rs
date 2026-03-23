@@ -275,13 +275,18 @@ impl GhostDeployer {
             return Ok(());
         }
 
-        let req = self.engine_source.join("requirements.txt");
+        let engine_root = self.ghost_engine_repo_root();
+        let req = engine_root.join("requirements.txt");
 
         if !req.exists() {
-            return Err(format!("requirements.txt not found at {:?}", req));
+            return Err(format!(
+                "requirements.txt not found at {:?} (engine root {:?}). \
+                 Set GHOST_ENGINE_ROOT to your repo root, or ensure ~/.ghost/engine_root.txt points at the engine.",
+                req,
+                engine_root
+            ));
         }
 
-        let engine_root = self.ghost_engine_repo_root();
         let spec = format!("{}[embeddings]", engine_root.to_string_lossy());
         let mut cmd = Command::new(pip.to_string_lossy().as_ref());
         cmd.args(["install", "--no-cache-dir", "-e", &spec])
