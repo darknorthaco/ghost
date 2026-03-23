@@ -97,6 +97,24 @@ export const submitTask = (taskType: string, parameters: Record<string, unknown>
 export const scanAndRegisterWorkers = () =>
   invoke<{ scanned: number; registered: number; nodes: Array<[string, number]> }>('scan_and_register_workers');
 
+/** Phase 5 — read-only preflight; appends predictive_fdx.jsonl only. */
+export interface PredictionResult {
+  domain: string;
+  outcome: string;
+  predictiveP: number;
+  rationale: string;
+  context: Record<string, string>;
+  signatureKey?: string;
+}
+
+export interface PreflightReport {
+  timestamp: string;
+  predictions: PredictionResult[];
+}
+
+export const predictivePreflightCheck = () =>
+  invoke<PreflightReport>('predictive_preflight_check');
+
 // Phase 3 — offline bundle
 export const verifyOfflineBundle = (path: string) =>
   invoke<Record<string, unknown>>('verify_offline_bundle', { path });

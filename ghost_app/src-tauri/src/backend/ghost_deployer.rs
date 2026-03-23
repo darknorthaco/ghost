@@ -2,10 +2,10 @@ use std::path::{Path, PathBuf};
 use tauri::Emitter;
 use tokio::process::Command;
 
+use super::fdx_log::{self, FdxEntry};
 use super::hide_console::hide_child_console;
-use super::discovery::{
-    self, base_to_broadcast, discover_workers_with_log, DEFAULT_DISCOVERY_TOTAL_TIMEOUT_MS,
-};
+use super::discovery::{self, base_to_broadcast, DEFAULT_DISCOVERY_TOTAL_TIMEOUT_MS};
+use super::worker_health_discovery;
 use super::discovery_log::{DependencyInitEntry, DiscoveryLog, DiscoveryLogBuilder, FullDeployLogEntry};
 use super::ghost_api::{GhostApiClient, RegisterWorkerRequest};
 
@@ -107,6 +107,10 @@ impl GhostDeployer {
     }
 
     fn emit_scan_log(&self, line: &str) {
+        fdx_log::append_discovery(
+            &self.ghost_root,
+            &FdxEntry::new("discovery", "scan_log", "info", line),
+        );
         if let Some(ref app) = self.scan_log_emitter {
             let _ = app.emit("scan-log", line);
         }
@@ -1062,6 +1066,21 @@ impl GhostDeployer {
             error_message: None,
         });
 
+        let repo_root = self.ghost_engine_repo_root();
+        fdx_log::append_deploy(
+            &self.ghost_root,
+            &FdxEntry::new("pre_scan", "engine_resolve", "start", "Deploy pre-scan started")
+                .details(serde_json::json!({
+                    "ghost_engine_repo_root": repo_root.to_string_lossy(),
+                    "engine_source_arg": self.engine_source.to_string_lossy(),
+                    "offline_mode": self.is_offline(),
+                })),
+        );
+        fdx_log::append_deploy(
+            &self.ghost_root,
+            &FdxEntry::new("pre_scan", "engine_resolve", "success", "Engine paths resolved for pre-scan"),
+        );
+
         for i in 0..=9 {
             let label = Self::steps().get(i).copied().unwrap_or("…");
             self.emit_deploy_progress(i, TOTAL_STEPS, label, (i as f64) / (TOTAL_STEPS as f64));
@@ -1079,25 +1098,86 @@ impl GhostDeployer {
                 9 => "start_local_worker",
                 _ => "unknown",
             });
+            fdx_log::append_deploy(
+                &self.ghost_root,
+                &FdxEntry::new("deploy", &step_name, "start", label)
+                    .context(serde_json::json!({"step_index": i})),
+            );
             let step_start = std::time::Instant::now();
-            let result = self.run_step(i).await;
+            let first = self.run_step(i).await;
+            let (result, remediated) = match &first {
+                Ok(()) => (first, false),
+                Err(e) => {
+                    fdx_log::append_deploy(
+                        &self.ghost_root,
+                        &FdxEntry::new("deploy", &step_name, "error", label)
+                            .error(e.clone())
+                            .details(serde_json::json!({
+                                "duration_ms": step_start.elapsed().as_millis() as u64,
+                                "step_index": i,
+                                "attempt": 1,
+                            })),
+                    );
+                    match super::deploy_remediation::remediate_and_retry_once(
+                        &self.ghost_root,
+                        i,
+                        &step_name,
+                        e,
+                        || self.run_step(i),
+                    )
+                    .await
+                    {
+                        Ok(()) => (Ok(()), true),
+                        Err(e2) => (Err(e2), true),
+                    }
+                }
+            };
             let duration_ms = step_start.elapsed().as_millis() as u64;
 
             step_idx += 1;
             full_deploy_entries.push(FullDeployLogEntry {
                 timestamp: chrono::Utc::now().to_rfc3339(),
                 step_index: step_idx,
-                step_name,
+                step_name: step_name.clone(),
                 success: result.is_ok(),
                 duration_ms,
-                metadata: Some(serde_json::json!({"step": i})),
+                metadata: Some(serde_json::json!({"step": i, "remediated": remediated})),
                 error_message: result.as_ref().err().map(|e| e.clone()),
             });
+
+            match &result {
+                Ok(()) => {
+                    fdx_log::append_deploy(
+                        &self.ghost_root,
+                        &FdxEntry::new("deploy", &step_name, "success", label).details(
+                            serde_json::json!({
+                                "duration_ms": duration_ms,
+                                "step_index": i,
+                                "remediated": remediated,
+                            }),
+                        ),
+                    );
+                }
+                Err(e) => {
+                    if !remediated {
+                        fdx_log::append_deploy(
+                            &self.ghost_root,
+                            &FdxEntry::new("deploy", &step_name, "error", label)
+                                .error(e.clone())
+                                .details(serde_json::json!({"duration_ms": duration_ms, "step_index": i})),
+                        );
+                    }
+                }
+            }
 
             result?;
         }
 
         self.emit_deploy_progress(10, TOTAL_STEPS, "Scanning LAN", 10_f64 / TOTAL_STEPS as f64);
+        fdx_log::append_discovery(
+            &self.ghost_root,
+            &FdxEntry::new("pre_scan", "lan_discovery", "start", "UDP / LAN discovery phase"),
+        );
 
         // Dependency Initialization Log — measure each dependency before discovery
         let mut dependency_init_entries = Vec::new();
@@ -1253,9 +1333,37 @@ impl GhostDeployer {
                 (discovery_log, w)
             })
             .await
-            .map_err(|e| format!("Offline discovery task panicked: {e}"))?;
+            .map_err(|e| {
+                let msg = format!("Offline discovery task panicked: {e}");
+                fdx_log::append_deploy(
+                    &self.ghost_root,
+                    &FdxEntry::new("pre_scan", "lan_discovery", "error", &msg).error(&msg),
+                );
+                msg
+            })?;
             dlog.set_readiness_result(probe_attempts, probe_success);
             self.emit_scan_log("Received 1 synthetic manifest (offline local-worker)");
+            fdx_log::append_worker_health(
+                &self.ghost_root,
+                &FdxEntry::new(
+                    "worker_health",
+                    "health_score",
+                    "info",
+                    "Offline synthetic worker (Phase 4)",
+                )
+                .details(serde_json::json!({
+                    "worker_id": "local-worker",
+                    "score_0_100": 100,
+                    "offline_mode": true,
+                })),
+            );
+            worker_health_discovery::append_worker_signal(
+                &self.ghost_root,
+                "local-worker",
+                true,
+                None,
+                "offline_synthetic",
+            );
             (vec![synthetic], dlog)
         } else {
             self.emit_scan_log(&format!("Subnets to broadcast: {:?}", broadcast_addrs));
@@ -1271,17 +1379,28 @@ impl GhostDeployer {
             ));
 
             let addrs = broadcast_addrs.clone();
+            let gr = self.ghost_root.clone();
+            let deps = dependency_init_entries.clone();
+            let full = full_deploy_entries.clone();
             let (manifests, mut discovery_log) = tokio::task::spawn_blocking(move || {
-                discover_workers_with_log(
+                worker_health_discovery::discover_with_integrity_and_fallback(
+                    &gr,
                     &addrs,
                     total_timeout_ms,
                     early_exit,
-                    dependency_init_entries,
-                    full_deploy_entries,
+                    deps,
+                    full,
                 )
             })
             .await
-            .map_err(|e| format!("Discovery task panicked: {e}"))?;
+            .map_err(|e| {
+                let msg = format!("Discovery task panicked: {e}");
+                fdx_log::append_deploy(
+                    &self.ghost_root,
+                    &FdxEntry::new("pre_scan", "lan_discovery", "error", &msg).error(&msg),
+                );
+                msg
+            })?;
 
             discovery_log.set_readiness_result(probe_attempts, probe_success);
 
@@ -1300,6 +1419,16 @@ impl GhostDeployer {
                     public_key_b64: m.manifest.public_key_b64.clone(),
                 })
                 .collect();
+
+            worker_health_discovery::log_predictive_availability_batch(
+                &self.ghost_root,
+                &discovered_workers
+                    .iter()
+                    .map(|w| w.worker_id.clone())
+                    .collect::<Vec<_>>(),
+                probe_success,
+            );
+
             (discovered_workers, discovery_log)
         };
 
@@ -1326,6 +1455,24 @@ impl GhostDeployer {
         if offline_mode {
             self.persist_offline_install_marker().await?;
         }
+
+        fdx_log::append_discovery(
+            &self.ghost_root,
+            &FdxEntry::new("pre_scan", "lan_discovery", "success", "Discovery window closed")
+                .details(serde_json::json!({
+                    "worker_count": discovery_log.worker_count,
+                    "discovery_failed": discovery_failed,
+                    "offline_mode": offline_mode,
+                })),
+        );
+        fdx_log::append_deploy(
+            &self.ghost_root,
+            &FdxEntry::new("pre_scan", "pre_scan_complete", "success", "Deploy pre-scan finished")
+                .details(serde_json::json!({
+                    "discovered_workers": discovered_workers.len(),
+                    "discovery_failed": discovery_failed,
+                })),
+        );
 
         Ok(DeploymentPreScanResult {
             discovered_workers,
@@ -1416,8 +1563,12 @@ impl GhostDeployer {
     }
 }
 
-/// Emit a scan log line if the app handle is provided.
-fn emit_scan_log_opt(app: &Option<tauri::AppHandle>, line: &str) {
+/// Emit a scan log line to FDX discovery stream and UI if the app handle is provided.
+fn emit_scan_log_opt(ghost_root: &std::path::Path, app: &Option<tauri::AppHandle>, line: &str) {
+    fdx_log::append_discovery(
+        ghost_root,
+        &FdxEntry::new("discovery", "manual_scan", "info", line),
+    );
     if let Some(ref a) = app {
         let _ = a.emit("scan-log", line);
     }
@@ -1431,6 +1582,7 @@ pub async fn scan_and_register_workers(
 ) -> Result<ScanResult, String> {
     if ghost_root.join("state/offline_install.json").is_file() {
         emit_scan_log_opt(
+            ghost_root,
             &scan_log_emitter,
             "GHOST OFFLINE MODE — scan skipped (no remote LAN discovery)",
         );
@@ -1447,9 +1599,9 @@ pub async fn scan_and_register_workers(
         .filter_map(|b| base_to_broadcast(b))
         .collect();
 
-    emit_scan_log_opt(&scan_log_emitter, &format!("Subnets: {:?}", broadcast_addrs));
-    emit_scan_log_opt(&scan_log_emitter, "Broadcasting DISCOVER_WORKERS…");
-    emit_scan_log_opt(&scan_log_emitter, "Waiting for worker manifests…");
+    emit_scan_log_opt(ghost_root, &scan_log_emitter, &format!("Subnets: {:?}", broadcast_addrs));
+    emit_scan_log_opt(ghost_root, &scan_log_emitter, "Broadcasting DISCOVER_WORKERS…");
+    emit_scan_log_opt(ghost_root, &scan_log_emitter, "Waiting for worker manifests…");
 
     let config_path = ghost_root.join("ghost_config.json");
     let total_timeout_ms = read_nested_config(&config_path, &["discovery", "total_timeout_ms"])
@@ -1460,20 +1612,43 @@ pub async fn scan_and_register_workers(
         .unwrap_or(true);
 
     let addrs = broadcast_addrs.clone();
+    let gr = ghost_root.to_path_buf();
+    let tt = total_timeout_ms;
+    let ee = early_exit;
     let manifests = tokio::task::spawn_blocking(move || {
-        discovery::discover_single_window(&addrs, total_timeout_ms, early_exit, None)
+        worker_health_discovery::manual_discover_with_integrity_and_fallback(
+            &gr, &addrs, tt, ee,
+        )
     })
     .await
-    .map_err(|e| format!("Discovery task panicked: {e}"))?;
+    .map_err(|e| {
+        let msg = format!("Discovery task panicked: {e}");
+        fdx_log::append_discovery(
+            ghost_root,
+            &FdxEntry::new("discovery", "manual_scan", "error", &msg).error(&msg),
+        );
+        msg
+    })?;
 
-    emit_scan_log_opt(&scan_log_emitter, &format!("Received {} manifest(s)", manifests.len()));
+    emit_scan_log_opt(
+        ghost_root,
+        &scan_log_emitter,
+        &format!("Received {} manifest(s)", manifests.len()),
+    );
 
     let controller = GhostApiClient::new(controller_url);
     let mut registered = 0usize;
     for m in &manifests {
         let host = m.registration_host();
-        emit_scan_log_opt(&scan_log_emitter, &format!("Received worker manifest from {}:{} (sig={})", host, m.port, m.signature_verified));
-        emit_scan_log_opt(&scan_log_emitter, "Validating manifest…");
+        emit_scan_log_opt(
+            ghost_root,
+            &scan_log_emitter,
+            &format!(
+                "Received worker manifest from {}:{} (sig={})",
+                host, m.port, m.signature_verified
+            ),
+        );
+        emit_scan_log_opt(ghost_root, &scan_log_emitter, "Validating manifest…");
         let req = RegisterWorkerRequest {
             worker_id: m.manifest.worker_id.clone(),
             host,
@@ -1484,15 +1659,41 @@ pub async fn scan_and_register_workers(
         match controller.register_worker(&req).await {
             Ok(()) => {
                 registered += 1;
-                emit_scan_log_opt(&scan_log_emitter, &format!("Registering worker {}…", req.worker_id));
+                emit_scan_log_opt(
+                    ghost_root,
+                    &scan_log_emitter,
+                    &format!("Registering worker {}…", req.worker_id),
+                );
             }
             Err(e) => {
-                emit_scan_log_opt(&scan_log_emitter, &format!("Registration failed: {e}"));
+                emit_scan_log_opt(
+                    ghost_root,
+                    &scan_log_emitter,
+                    &format!("Registration failed: {e}"),
+                );
+                fdx_log::append_discovery(
+                    ghost_root,
+                    &FdxEntry::new("discovery", "worker_registration", "error", "register_worker failed")
+                        .error(e.to_string())
+                        .context(serde_json::json!({"worker_id": req.worker_id})),
+                );
                 log::warn!("Failed to register {}: {e}", m.worker_id());
             }
         }
     }
-    emit_scan_log_opt(&scan_log_emitter, &format!("Done: {registered} worker(s) registered"));
+    emit_scan_log_opt(
+        ghost_root,
+        &scan_log_emitter,
+        &format!("Done: {registered} worker(s) registered"),
+    );
+    fdx_log::append_discovery(
+        ghost_root,
+        &FdxEntry::new("discovery", "manual_scan", "success", "Manual LAN scan complete")
+            .details(serde_json::json!({
+                "scanned": manifests.len(),
+                "registered": registered,
+            })),
+    );
 
     if !manifests.is_empty() {
         let scan_path = ghost_root.join("lan_scan.json");
@@ -1848,7 +2049,7 @@ fn venv_python(ghost_root: &PathBuf) -> PathBuf {
 /// Return the correct pip executable path inside the venv.
 /// Windows:  .ghost\venv\Scripts\pip.exe
 /// Unix:     .ghost/venv/bin/pip
-fn venv_pip(ghost_root: &PathBuf) -> PathBuf {
+pub(crate) fn venv_pip(ghost_root: &PathBuf) -> PathBuf {
     #[cfg(target_os = "windows")]
     return ghost_root.join("venv\\Scripts\\pip.exe");
     #[cfg(not(target_os = "windows"))]

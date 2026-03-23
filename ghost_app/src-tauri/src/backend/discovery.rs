@@ -405,6 +405,10 @@ pub fn discover_workers(broadcast_addrs: &[String]) -> Vec<DiscoveredManifest> {
 /// Timing data is recorded in the log for Phase 3 "Discovery Timing Breakdown".
 /// `dependency_init_entries` are prepended to the Dependency Initialization Log.
 /// `full_deploy_entries` (steps 1–22 from deployer) are prepended to the Full Deployment Log.
+///
+/// **Note:** Pre-scan deploy and manual LAN scan use the `worker_health_discovery` module (Phase 4) instead;
+/// this helper remains for callers that want a single pass without integrity/fallback.
+#[allow(dead_code)]
 pub fn discover_workers_with_log(
     broadcast_addrs: &[String],
     total_timeout_ms: u64,

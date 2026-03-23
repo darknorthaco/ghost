@@ -1,4 +1,4 @@
-"""HTTP client for Phantom-style workers — optional; no implicit network use."""
+"""HTTP client for GHOST workers — optional; explicit TLS; no implicit network downgrade."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import httpx
 
 
 def _verify_for_tls(tls_enabled: bool, tls_controller_cert_path: str | None) -> bool | str:
-    """Mirror Phantom `worker_tls.httpx_verify_for_worker`: explicit pin, no silent downgrade."""
+    """Explicit certificate pin when TLS is enabled; no silent downgrade."""
     if not tls_enabled:
         return True
     if not tls_controller_cert_path:
@@ -22,7 +22,7 @@ def _verify_for_tls(tls_enabled: bool, tls_controller_cert_path: str | None) -> 
 
 
 @dataclass
-class PhantomWorkerClient:
+class HttpWorkerClient:
     """Minimal task dispatch to a worker base URL; TLS is explicit and opt-in."""
 
     base_url: str

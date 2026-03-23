@@ -30,6 +30,10 @@ GHOST uses **dual licensing**:
 
 **Doctrine** (product principles, disclaimers): [`DOCTRINE.md`](DOCTRINE.md) · **Contributing**: [`CONTRIBUTING.md`](CONTRIBUTING.md) · **Acknowledgments**: [`ACKNOWLEDGMENTS.md`](ACKNOWLEDGMENTS.md)
 
+### Deployment observability (FDX)
+
+Structured deploy/discovery/installer traces are written as **append-only JSONL** under **`%USERPROFILE%\.ghost\logs\`** (Windows) or **`~/.ghost/logs/`** (POSIX): `deploy_fdx.jsonl`, `discovery_fdx.jsonl`, `installer_fdx.jsonl`. See **[`docs/FDX_OBSERVABILITY.md`](docs/FDX_OBSERVABILITY.md)** for the pipeline map, path matrix, failure-mode notes, and how to report issues.
+
 Core Features
 Offline‑first, sovereign design
 
@@ -63,3 +67,5 @@ Adaptive retrieval research
 Sovereign AI assistants
 
 Distributed worker orchestration
+
+For GHOST's identity, architecture, and governance, see GHOST_MANIFEST.md.

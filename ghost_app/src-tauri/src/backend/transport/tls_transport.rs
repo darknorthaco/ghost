@@ -12,7 +12,7 @@ pub struct TlsTransportConfig {
     pub cert_path: String,
     pub key_path: String,
     /// Path to the peer's self-signed certificate for pinned trust.
-    /// Required for GHOST zero-trust inter-controller mesh.
+    /// Required for GHOST zero-trust peer TLS when pinning a specific controller cert.
     pub peer_cert_path: Option<String>,
 }
 
@@ -20,7 +20,7 @@ pub struct TlsTransportConfig {
 ///
 /// Uses certificate pinning when `config.peer_cert_path` is set — the only
 /// cert trusted is the one at that path.  This is the correct security model
-/// for GHOST sovereign mesh where all controllers use self-signed certs.
+/// for GHOST sovereign deployments where peers use self-signed certs.
 pub async fn establish_secure_channel(
     config: &TlsTransportConfig,
     target: &str,
@@ -69,7 +69,7 @@ pub async fn establish_secure_channel(
         // No peer cert provided — use an empty root store.
         // Connections will succeed only when the server presents a cert signed
         // by one of the roots we add to the pool.  For GHOST self-signed
-        // mesh this means peer_cert_path should always be provided; leaving it
+        // pinned peer TLS this means peer_cert_path should always be provided; leaving it
         // None is appropriate only for connections to publicly-trusted endpoints.
         let root_store = RootCertStore::empty();
         ClientConfig::builder()

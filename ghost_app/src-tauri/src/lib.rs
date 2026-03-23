@@ -526,7 +526,17 @@ async fn run_deployment_pre_scan(
         deployer.run_pre_scan_deployment().await
     };
     let result = pre_scan.await;
-    if result.is_err() {
+    if let Err(ref e) = result {
+        backend::fdx_log::append_deploy(
+            &state.app.ghost_root,
+            &backend::fdx_log::FdxEntry::new(
+                "pre_scan",
+                "pre_scan",
+                "error",
+                "run_deployment_pre_scan failed",
+            )
+            .error(e.clone()),
+        );
         if let Ok(mut phase) = state.app.phase.lock() {
             *phase = AppPhase::FrontPorch;
         }
@@ -536,6 +546,13 @@ async fn run_deployment_pre_scan(
     let _ = app.emit("deploy-discovery-result", &result);
 
     Ok(result)
+}
+
+/// Phase 5 — read-only preflight: predictions only; appends `predictive_fdx.jsonl`; no deploy/remediation.
+#[tauri::command]
+fn predictive_preflight_check(state: tauri::State<'_, ManagedState>) -> Result<backend::predictive_failure::PreflightReport, String> {
+    let report = backend::predictive_failure::run_preflight_and_log(&state.app.ghost_root);
+    Ok(report)
 }
 
 /// Register selected workers and complete deployment (step 11). Call after ceremony.
@@ -608,10 +625,17 @@ async fn deploy_ghost(
     let total = steps.len();
 
     for (i, label) in steps.iter().enumerate() {
+        let step_key = format!("deploy_legacy_step_{i}");
+        backend::fdx_log::append_deploy(
+            &ghost_root,
+            &backend::fdx_log::FdxEntry::new("deploy_legacy", &step_key, "start", *label)
+                .context(serde_json::json!({"step_index": i})),
+        );
+
         let progress = DeploymentProgress {
             step: i,
             total_steps: total,
-            label: label.to_string(),
+            label: (*label).to_string(),
             fraction: (i as f64) / (total as f64),
         };
         let _ = app.emit("deploy-progress", &progress);
@@ -620,21 +644,50 @@ async fn deploy_ghost(
             .audit
             .log_event(
                 "deployment_step",
-                serde_json::json!({"step": i, "label": label}),
+                serde_json::json!({"step": i, "label": *label}),
             )
             .await
             .ok();
 
-        if let Err(e) = deployer.run_step(i).await {
-            log::warn!("Step {} ({}) failed: {}", i, label, e);
-            state
-                .audit
-                .log_event(
-                    "deployment_step_failed",
-                    serde_json::json!({"step": i, "error": e}),
-                )
-                .await
-                .ok();
+        match deployer.run_step(i).await {
+            Ok(()) => {
+                backend::fdx_log::append_deploy(
+                    &ghost_root,
+                    &backend::fdx_log::FdxEntry::new(
+                        "deploy_legacy",
+                        &step_key,
+                        "success",
+                        *label,
+                    )
+                    .context(serde_json::json!({"step_index": i})),
+                );
+            }
+            Err(e) => {
+                log::warn!("Step {} ({}) failed: {}", i, *label, e);
+                backend::fdx_log::append_deploy(
+                    &ghost_root,
+                    &backend::fdx_log::FdxEntry::new(
+                        "deploy_legacy",
+                        &step_key,
+                        "error",
+                        *label,
+                    )
+                    .error(e.clone())
+                    .context(serde_json::json!({"step_index": i})),
+                );
+                state
+                    .audit
+                    .log_event(
+                        "deployment_step_failed",
+                        serde_json::json!({"step": i, "error": e.clone()}),
+                    )
+                    .await
+                    .ok();
+                if let Ok(mut phase) = state.app.phase.lock() {
+                    *phase = AppPhase::FrontPorch;
+                }
+                return Err(e);
+            }
         }
     }
 
@@ -651,6 +704,16 @@ async fn deploy_ghost(
         .log_event("deployment_complete", serde_json::json!({}))
         .await
         .ok();
+
+    backend::fdx_log::append_deploy(
+        &ghost_root,
+        &backend::fdx_log::FdxEntry::new(
+            "deploy_legacy",
+            "deploy_legacy_complete",
+            "success",
+            "Legacy deploy_ghost path finished all steps",
+        ),
+    );
 
     {
         let mut phase = state.app.phase.lock().map_err(|e| e.to_string())?;
@@ -910,6 +973,7 @@ pub fn run() {
             check_integrity,
             get_deployment_status,
             run_deployment_pre_scan, complete_deployment_with_selection,
+            predictive_preflight_check,
             deploy_ghost,
             verify_offline_bundle, load_offline_model_catalogue, install_offline_bundle,
             get_ghost_health, get_workers, get_stats,

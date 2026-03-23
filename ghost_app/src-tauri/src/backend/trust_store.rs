@@ -224,7 +224,6 @@ impl TrustStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::Path;
 
     fn tmp_store(name: &str) -> TrustStore {
         let dir = std::env::temp_dir().join("ghost_test_trust").join(name);

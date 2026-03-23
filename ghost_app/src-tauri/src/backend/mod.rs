@@ -1,4 +1,9 @@
 pub mod hide_console;
+pub mod fdx_log;
+pub mod fdx_retrieval;
+pub mod deploy_remediation;
+pub mod worker_health_discovery;
+pub mod predictive_failure;
 pub mod discovery;
 pub mod discovery_log;
 pub mod offline_bundle;

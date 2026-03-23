@@ -7,8 +7,13 @@ from typing import Any, Mapping
 from ghost_orchestrator.models import TaskSpec, WorkerStatus
 
 
-def _score_worker(task: TaskSpec, w: Mapping[str, Any], gpu_profiles: Mapping[str, Mapping[str, float]]) -> float:
-    """Replica of Phantom-style scoring, purely functional for testing and audit."""
+def _score_worker(
+    task: TaskSpec,
+    w: Mapping[str, Any],
+    gpu_profiles: Mapping[str, Mapping[str, float]],
+    reliability_weights: Mapping[str, float] | None,
+) -> float:
+    """GHOST deterministic worker scoring (capacity + GPU profile hints), purely functional for audit."""
     if w.get("status") != WorkerStatus.ACTIVE.value:
         return -1.0
     cur = int(w.get("current_tasks", 0))
@@ -28,15 +33,26 @@ def _score_worker(task: TaskSpec, w: Mapping[str, Any], gpu_profiles: Mapping[st
     req = task.memory_required_mb
     if req is not None and req > 0:
         mem_factor = 0.1 if mem_free < req else min(1.0, mem_free / req)
-    return base * load_factor * perf * mem_factor
+    score = base * load_factor * perf * mem_factor
+    if reliability_weights is not None:
+        rel = float(reliability_weights.get(str(w.get("worker_id", "")), 1.0))
+        # Bounded blend: history can modulate but not zero out a healthy worker
+        score *= max(0.25, min(1.5, 0.5 + rel))
+    return score
 
 
 def deterministic_route(
     task: TaskSpec,
     registry_snapshot: Mapping[str, Any],
     gpu_profiles: Mapping[str, Mapping[str, float]] | None = None,
+    reliability_weights: Mapping[str, float] | None = None,
 ) -> str | None:
-    """Pick highest score; ties broken by lexicographic `worker_id`."""
+    """Pick highest score; ties broken by lexicographic `worker_id`.
+
+    When ``reliability_weights`` is provided (e.g. from ``laplace_reliability_weights()``),
+    scores are multiplied by a bounded factor derived from historical success — same weights
+    → same route (deterministic).
+    """
     profiles: Mapping[str, Mapping[str, float]] = gpu_profiles or {
         "RTX 5080": {"ml_inference": 10.0, "training": 9.5, "default": 8.0},
         "GTX 1080": {"ml_inference": 5.0, "training": 4.5, "default": 5.0},
@@ -45,7 +61,7 @@ def deterministic_route(
     scored: list[tuple[str, float]] = []
     for w in workers:
         wid = str(w["worker_id"])
-        s = _score_worker(task, w, profiles)
+        s = _score_worker(task, w, profiles, reliability_weights)
         scored.append((wid, s))
     scored.sort(key=lambda x: (-x[1], x[0]))
     for wid, s in scored:

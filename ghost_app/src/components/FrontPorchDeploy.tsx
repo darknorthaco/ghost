@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
-import { runDeploymentPreScan } from '../utils/tauri';
+import { predictivePreflightCheck, runDeploymentPreScan } from '../utils/tauri';
+import type { PreflightReport, PredictionResult } from '../utils/tauri';
 import type { DeploymentPreScanResult } from '../state/deploymentState';
 import '../styles/deploy.css';
 
@@ -27,6 +28,9 @@ export default function FrontPorchDeploy({ onPreScanComplete }: Props) {
   const [deployError, setDeployError] = useState<string | null>(null);
   const [progress, setProgress] = useState<DeployProgress | null>(null);
   const [scanLog, setScanLog] = useState<string[]>([]);
+  const [preflight, setPreflight] = useState<PreflightReport | null>(null);
+  const [preflightLoading, setPreflightLoading] = useState(false);
+  const [preflightError, setPreflightError] = useState<string | null>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -58,6 +62,19 @@ export default function FrontPorchDeploy({ onPreScanComplete }: Props) {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [scanLog]);
 
+  const handlePreflight = async () => {
+    setPreflightLoading(true);
+    setPreflightError(null);
+    try {
+      const r = await predictivePreflightCheck();
+      setPreflight(r);
+    } catch (err) {
+      setPreflightError(formatInvokeError(err));
+    } finally {
+      setPreflightLoading(false);
+    }
+  };
+
   const handleDeploy = async () => {
     setDeploying(true);
     setDeployError(null);
@@ -75,6 +92,15 @@ export default function FrontPorchDeploy({ onPreScanComplete }: Props) {
   const pct = progress ? Math.round(progress.fraction * 100) : 0;
   const showScanLog =
     deploying && (progress?.label === 'Scanning LAN' || progress?.label === 'Starting local worker');
+
+  const deployFails = (preflight?.predictions ?? [])
+    .filter((p) => p.domain === 'deploy' && p.outcome === 'likely_fail')
+    .sort((a, b) => b.predictiveP - a.predictiveP);
+  const workersDown = (preflight?.predictions ?? []).filter(
+    (p) => p.domain === 'worker' && p.outcome === 'likely_down'
+  );
+  const discoveryPred = (preflight?.predictions ?? []).find((p) => p.domain === 'discovery');
+  const routingPred = (preflight?.predictions ?? []).find((p) => p.domain === 'routing');
 
   return (
     <div className="deploy-screen">
@@ -142,9 +168,103 @@ export default function FrontPorchDeploy({ onPreScanComplete }: Props) {
               {deployError}
             </div>
           )}
-          <button className="deploy-btn" onClick={handleDeploy} disabled={deploying}>
-            Deploy GHOST
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+            <button className="deploy-btn" onClick={handleDeploy} disabled={deploying}>
+              Deploy GHOST
+            </button>
+            <button
+              type="button"
+              className="deploy-btn"
+              style={{ opacity: 0.85, fontSize: 12, padding: '8px 16px' }}
+              onClick={handlePreflight}
+              disabled={deploying || preflightLoading}
+            >
+              {preflightLoading ? 'Preflight…' : 'Preflight Check'}
+            </button>
+            {preflightError && (
+              <div
+                style={{
+                  maxWidth: 520,
+                  fontSize: 11,
+                  color: '#ffb4b4',
+                  fontFamily: 'var(--font-mono)',
+                }}
+              >
+                {preflightError}
+              </div>
+            )}
+            {preflight && (
+              <div
+                className="preflight-panel"
+                style={{
+                  maxWidth: 560,
+                  marginTop: 8,
+                  padding: 12,
+                  textAlign: 'left',
+                  fontSize: 11,
+                  lineHeight: 1.4,
+                  background: 'rgba(30, 30, 45, 0.6)',
+                  borderRadius: 8,
+                  border: '1px solid rgba(120, 120, 180, 0.25)',
+                  fontFamily: 'var(--font-mono)',
+                }}
+              >
+                <div style={{ marginBottom: 8, opacity: 0.9 }}>
+                  Preflight (informational only — no deploy changes)
+                </div>
+                <div style={{ marginBottom: 6 }}>
+                  <strong>Likely fail steps</strong> (by risk p)
+                  {deployFails.length === 0 ? (
+                    <span style={{ opacity: 0.7 }}> — none flagged</span>
+                  ) : (
+                    <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
+                      {deployFails.map((p: PredictionResult, i: number) => (
+                        <li key={i}>
+                          step {p.context.stepIndex ?? '?'} p={p.predictiveP.toFixed(2)}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <div style={{ marginBottom: 6 }}>
+                  <strong>Likely down workers</strong>
+                  {workersDown.length === 0 ? (
+                    <span style={{ opacity: 0.7 }}> — none flagged</span>
+                  ) : (
+                    <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
+                      {workersDown.map((p: PredictionResult, i: number) => (
+                        <li key={i}>
+                          {p.context.workerId ?? '?'} failure_p={p.predictiveP.toFixed(2)}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <div style={{ marginBottom: 6 }}>
+                  <strong>Discovery risk</strong>
+                  {discoveryPred ? (
+                    <span>
+                      {' '}
+                      {discoveryPred.outcome} (p={discoveryPred.predictiveP.toFixed(2)})
+                    </span>
+                  ) : (
+                    <span style={{ opacity: 0.7 }}> — n/a</span>
+                  )}
+                </div>
+                <div>
+                  <strong>Routing instability</strong>
+                  {routingPred ? (
+                    <span>
+                      {' '}
+                      {routingPred.outcome} (p={routingPred.predictiveP.toFixed(2)})
+                    </span>
+                  ) : (
+                    <span style={{ opacity: 0.7 }}> — n/a</span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>

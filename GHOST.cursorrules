@@ -1,0 +1,65 @@
+# GHOST — Cursor operational rules
+# Sovereign to this repository. Do NOT treat Phantom upstream rules as authoritative here.
+
+## project_identity
+- name: GHOST
+- creed: >
+    Local-first, sovereign, retrieval-driven, self-healing, deterministic.
+    Observability via FDX JSONL; remediation bounded and auditable;
+    routing informed by Laplace-weighted reliability signals — all on-disk, user-owned.
+
+## banned_patterns
+- Cloud SDKs and managed backends for **core** behavior: e.g. aws-sdk, gcp, azure, firebase as **required** paths.
+- Product analytics / tracking for **core** flows: segment, mixpanel, google-analytics, etc.
+- Hidden network calls: any outbound call not documented in-repo and opt-in.
+- Non-local **authoritative** state for deploy, remediation, retrieval, or deterministic routing (no silent remote source of truth).
+
+## requirements
+- **FDX logging** must be preserved and extended where new critical flows are added — never removed without Manifest/Doctrine amendment.
+- **Self-healing deploy** must remain **bounded** (one remediation cycle + at most one retry per policy) and **fully auditable** on `deploy_fdx.jsonl` and `remediation_cases.jsonl`.
+- **Retrieval-driven remediation** must remain **deterministic** (same history + inputs → same ranked choice) and **local** (no retrieval network).
+- **Reliability-aware routing** must remain **deterministic** and **auditable** (`worker_signals.jsonl`, optional `worker_routing_fdx.jsonl`).
+- **No new global mutable process state** for core behavior without explicit documentation (code comment + `docs/FDX_OBSERVABILITY.md` or Doctrine update).
+
+## modules — protect and respect
+
+### Rust (`ghost_app/src-tauri/src/backend/`)
+- `fdx_log.rs` — append-only JSONL; schema fields stable unless versioned (includes `append_worker_health` / `worker_health_fdx.jsonl`).
+- `fdx_retrieval.rs` — corpus load, similarity, Laplace rates, deterministic ranking.
+- `deploy_remediation.rs` — retrieval FDX, bounded execute, retry, case append.
+- `ghost_deployer.rs` — deploy steps, pre-scan loop, integration with remediation and Phase 4 discovery.
+- `worker_health_discovery.rs` — integrity, health scores, predictive labels, **one** bounded discovery fallback.
+- `predictive_failure.rs` — read-only preflight forecasts; **append-only** `predictive_fdx.jsonl`; **no** remediation, retries, or worker/venv/engine mutation from this module.
+
+Changes MUST preserve: FDX semantics, determinism, retrieval behavior, remediation bounds, Phase 4 discovery bounds (at most one extra UDP window), Phase 5 read-only preflight contract.
+
+### Python (`ghost_orchestrator/`)
+- `reliability_store.py` — signals, Laplace weights, routing audit append.
+- `router.py` — deterministic_route; reliability multiplier bounded.
+- `router_reliability.py` — audit wrapper for retrieval-weighted routing.
+
+Changes MUST preserve: determinism, local files only, audit trail when using `deterministic_route_with_retrieval_audit`.
+
+### Documentation
+- `docs/FDX_OBSERVABILITY.md` — source of truth for log locations and Phases 1–5 behavior.
+
+## alignment_checks (run mentally before merge)
+Answer explicitly when touching deploy, FDX, retrieval, or routing:
+1. Does this preserve **FDX observability** (or add equivalent structured logs), including **worker health / discovery integrity** streams where relevant?
+2. Does this preserve **self-healing semantics** (bounds + audit)?
+3. Does this preserve **retrieval-driven decision-making** (local, deterministic)?
+4. Does this remain **deterministic** for fixed on-disk history?
+5. Does this keep data **local and sovereign** (`~/.ghost` / `GHOST_HOME`)?
+6. Does this respect **UI / Rust / Python** boundaries?
+
+## hierarchy
+- soul: `GHOST_MANIFEST.md`
+- mind: `GHOST_DOCTRINE.md`
+- body: `GHOST.cursorrules`
+
+## final_rule
+If any design or implementation choice conflicts with **GHOST_MANIFEST.md**, the **Manifest prevails**. Reconcile Doctrine, code, and docs in a deliberate follow-up — never silently.
+
+## non-goals (reminders)
+- GHOST is not Phantom; do not import Phantom identity, doctrine, or `.cursorrules` as governing law.
+- Do not frame GHOST as a WAN mesh controller or mandatory trust fabric; such scope requires Manifest change first.
